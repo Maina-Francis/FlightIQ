@@ -1,6 +1,6 @@
 # FlytIQ
 
-# FlytIQ (flytiq.app) – System Architecture & Product Requirements Document
+# FlytIQ (flightIQ.app) – System Architecture & Product Requirements Document
 
 ## Executive Summary & Full Technology Stack
 
@@ -13,7 +13,7 @@ FlytIQ operates on a zero-friction, free-to-use affiliate monetization model. It
 - **Database & Auth:** Supabase (PostgreSQL with Row Level Security, Realtime Subscriptions).
 - **Geolocation & Currency:** IP Geolocation API fallback logic + Zustand LocalStorage/Cookie persistence.
 - **Transactional Email:** ZeptoMail API (Zoho) for low-latency HTML price drop alerts.
-- **Chat Ecosystem:** Telegram Bot API (`@FlytIQBot`) running webhooks.
+- **Chat Ecosystem:** Telegram Bot API (`@FlightIQBot`) running webhooks.
 - **Affiliate Management:** Impact.com API / Skyscanner Partner Deeplinks (`mediaPartnerId`).
 - **Analytics & Tracking:** Google Analytics 4 with custom conversion events.
 

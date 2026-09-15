@@ -409,7 +409,7 @@ function Index() {
                   ))}
                 </ul>
                 <a
-                  href="https://t.me/FlytIQBot"
+                  href="https://t.me/FlightIQBot"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#229ED9] px-5 py-2.5 text-sm font-bold text-white shadow-md transition-opacity hover:opacity-90"

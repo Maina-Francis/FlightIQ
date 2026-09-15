@@ -57,13 +57,13 @@ bot.command("start", async (ctx) => {
 
   await ctx.reply(
     "✈️ *Welcome to FlightIQ Bot!*\n\n" +
-      "Track flight prices in real-time and get alerted the moment fares drop.\n\n" +
-      "*Commands:*\n" +
-      "• `/track NBO CPT 80000` — Track a route with a target price\n" +
-      "• `/track NBO CPT any` — Alert on any price drop\n" +
-      "• `/deals` — View your active price trackers\n" +
-      "• `/help` — Show all commands\n\n" +
-      "_Visit [FlytIQ](https://flytiq.app) to set up alerts from your browser._",
+    "Track flight prices in real-time and get alerted the moment fares drop.\n\n" +
+    "*Commands:*\n" +
+    "• `/track NBO CPT 80000` — Track a route with a target price\n" +
+    "• `/track NBO CPT any` — Alert on any price drop\n" +
+    "• `/deals` — View your active price trackers\n" +
+    "• `/help` — Show all commands\n\n" +
+    "_Visit [FlytIQ](https://flightIQ.app) to set up alerts from your browser._",
     { parse_mode: "Markdown" },
   );
 });
@@ -76,11 +76,11 @@ bot.command("track", async (ctx) => {
   if (args.length < 2 || args[0] === "") {
     return ctx.reply(
       "⚠️ *Usage:* `/track <ORIGIN> <DESTINATION> [TARGET_PRICE]`\n\n" +
-        "_Examples:_\n" +
-        "• `/track NBO CPT 85000` — alert when fare drops below 85,000\n" +
-        "• `/track NBO CPT any` — alert on any price drop\n\n" +
-        "• Origin & destination are IATA airport codes (3 letters)\n" +
-        "• Target price is in your local currency",
+      "_Examples:_\n" +
+      "• `/track NBO CPT 85000` — alert when fare drops below 85,000\n" +
+      "• `/track NBO CPT any` — alert on any price drop\n\n" +
+      "• Origin & destination are IATA airport codes (3 letters)\n" +
+      "• Target price is in your local currency",
       { parse_mode: "Markdown" },
     );
   }
@@ -94,7 +94,7 @@ bot.command("track", async (ctx) => {
   if (!origin || !destination || (!isAnyDrop && (isNaN(targetPrice!) || targetPrice! <= 0))) {
     return ctx.reply(
       "❌ Invalid arguments. Please provide valid IATA codes and a positive target price (or 'any').\n\n" +
-        "_Example:_ `/track NBO CPT 85000` or `/track NBO CPT any`",
+      "_Example:_ `/track NBO CPT 85000` or `/track NBO CPT any`",
       { parse_mode: "Markdown" },
     );
   }
@@ -127,9 +127,9 @@ bot.command("track", async (ctx) => {
 
   await ctx.reply(
     `🎉 *Tracker Set!*\n\n` +
-      `Monitoring ✈️ *${origin.toUpperCase()}* ➔ *${destination.toUpperCase()}*\n` +
-      `We'll notify you on ${isAnyDrop ? "*any price drop*" : `when fares drop below *${priceLabel}*`}.\n\n` +
-      `_Type /deals to see all your active trackers._`,
+    `Monitoring ✈️ *${origin.toUpperCase()}* ➔ *${destination.toUpperCase()}*\n` +
+    `We'll notify you on ${isAnyDrop ? "*any price drop*" : `when fares drop below *${priceLabel}*`}.\n\n` +
+    `_Type /deals to see all your active trackers._`,
     { parse_mode: "Markdown", reply_markup: keyboard },
   );
 });
@@ -168,7 +168,7 @@ bot.command("deals", async (ctx) => {
 
   await ctx.reply(
     `📋 *Your Active Trackers:*\n\n${lines.join("\n")}\n\n` +
-      `_Visit [FlytIQ](https://flytiq.app) to manage your alerts._`,
+    `_Visit [FlytIQ](https://flightIQ.app) to manage your alerts._`,
     { parse_mode: "Markdown" },
   );
 });
@@ -178,12 +178,12 @@ bot.command("deals", async (ctx) => {
 bot.command("help", async (ctx) => {
   await ctx.reply(
     "*FlightIQ Bot Commands:*\n\n" +
-      "• `/start` — Welcome & account setup\n" +
-      "• `/track <ORIGIN> <DEST> <PRICE>` — Set a price alert\n" +
-      "• `/track <ORIGIN> <DEST> any` — Alert on any price drop\n" +
-      "• `/deals` — View your active trackers\n" +
-      "• `/help` — Show this message\n\n" +
-      "_Examples:_ `/track NBO LHR 120000` or `/track NBO LHR any`",
+    "• `/start` — Welcome & account setup\n" +
+    "• `/track <ORIGIN> <DEST> <PRICE>` — Set a price alert\n" +
+    "• `/track <ORIGIN> <DEST> any` — Alert on any price drop\n" +
+    "• `/deals` — View your active trackers\n" +
+    "• `/help` — Show this message\n\n" +
+    "_Examples:_ `/track NBO LHR 120000` or `/track NBO LHR any`",
     { parse_mode: "Markdown" },
   );
 });

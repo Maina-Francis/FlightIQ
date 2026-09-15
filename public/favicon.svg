@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="flytiq-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="flightIQ-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4F46E5" />
       <stop offset="100%" stop-color="#06B6D4" />
     </linearGradient>
@@ -10,7 +10,7 @@
   </defs>
 
   <!-- Squircle rounded background matching FlytIQ logo -->
-  <rect width="64" height="64" rx="16" ry="16" fill="url(#flytiq-gradient)" />
+  <rect width="64" height="64" rx="16" ry="16" fill="url(#flightIQ-gradient)" />
 
   <!-- Crisp plane icon from Lucide matching FlytIQ navbar -->
   <g transform="translate(14, 14) scale(1.5)" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">

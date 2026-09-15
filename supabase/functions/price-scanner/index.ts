@@ -26,7 +26,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const ZEPTO_API_KEY = Deno.env.get("ZEPTO_API_KEY");
-const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "flytiq-pending";
+const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "flightIQ-pending";
 
 const RATE_LIMIT_HOURS = 24;
 
@@ -60,7 +60,7 @@ function buildSkyscannerLink(
     cabinclass: "economy",
     currency,
     associateid: SKYSCANNER_PARTNER_ID,
-    utm_source: "flytiq",
+    utm_source: "flightIQ",
     utm_medium: "affiliate",
     utm_campaign: "price_alert",
   });
@@ -146,7 +146,7 @@ async function sendEmailAlert(opts: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: { address: "alerts@flytiq.app", name: "FlytIQ Alerts" },
+      from: { address: "alerts@flightIQ.app", name: "FlytIQ Alerts" },
       to: [{ email_address: { address: opts.email } }],
       subject: `✈️ Price Drop: ${opts.originIata} → ${opts.destinationIata} — ${opts.currency} ${opts.newPrice.toLocaleString()}`,
       htmlbody: `

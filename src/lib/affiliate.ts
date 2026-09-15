@@ -7,7 +7,7 @@ const DEFAULT_PARTNER_ID =
   (typeof import.meta !== "undefined" && import.meta.env
     ? (import.meta.env["VITE_SKYSCANNER_PARTNER_ID"] as string | undefined)
     : undefined) ??
-  "flytiq-pending";
+  "flightIQ-pending";
 
 export type DeepLinkInput = {
   origin: string;
@@ -47,7 +47,7 @@ export function buildSkyscannerDeepLink(input: DeepLinkInput): string {
     cabinclass: cabin,
     currency,
     associateid: partnerId,
-    utm_source: "flytiq",
+    utm_source: "flightIQ",
     utm_medium: "affiliate",
   });
 

@@ -370,12 +370,12 @@ export function AlertModal({
                     Telegram Chat ID
                   </Label>
                   <a
-                    href="https://t.me/FlytIQBot"
+                    href="https://t.me/FlightIQBot"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
                   >
-                    <span>Open @FlytIQBot</span>
+                    <span>Open @FlightIQBot</span>
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -390,7 +390,7 @@ export function AlertModal({
                   required
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Click the link above to start a chat with <strong>@FlytIQBot</strong> on
+                  Click the link above to start a chat with <strong>@FlightIQBot</strong> on
                   Telegram to receive alerts.
                 </p>
               </div>
