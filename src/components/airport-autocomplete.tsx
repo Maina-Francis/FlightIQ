@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { searchAirports, type Airport } from "@/lib/airports";
-import { searchAirportsFn, type AirportSearchResult } from "@/lib/airports.server";
+import { searchAirportsFn, type AirportSearchResult } from "@/lib/airports.functions";
 import { cn } from "@/lib/utils";
 import { Plane, X } from "lucide-react";
 
