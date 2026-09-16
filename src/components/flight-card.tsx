@@ -170,7 +170,7 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Prop
           <AirlineLogo
             code={offer.airlineCode}
             name={offer.airline}
-            logo={offer.airlineLogo}
+            logo={offer.airlineLogo ?? null}
           />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">
