@@ -56,7 +56,7 @@ export const searchFlights = createServerFn({ method: "GET" })
         currency: params.currency ?? "USD",
       });
     } catch (err) {
-      console.error("[FlytIQ] Live Duffel flight search failed:", err);
+      console.error("[FlightIQ] Live Duffel flight search failed:", err);
       const message =
         err instanceof Error
           ? err.message

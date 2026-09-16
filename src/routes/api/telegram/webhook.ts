@@ -23,7 +23,7 @@ export const APIRoute = createAPIFileRoute("/api/telegram/webhook")({
 
     if (!expectedSecret) {
       console.warn(
-        "[FlytIQ Telegram] TELEGRAM_WEBHOOK_SECRET is not set — webhook is unprotected!",
+        "[FlightIQ Telegram] TELEGRAM_WEBHOOK_SECRET is not set — webhook is unprotected!",
       );
     } else if (secret !== expectedSecret) {
       return new Response("Unauthorized", { status: 401 });
@@ -33,7 +33,7 @@ export const APIRoute = createAPIFileRoute("/api/telegram/webhook")({
     try {
       return await handleUpdate(request);
     } catch (err) {
-      console.error("[FlytIQ Telegram] Webhook handler error:", err);
+      console.error("[FlightIQ Telegram] Webhook handler error:", err);
       return new Response("Internal Server Error", { status: 500 });
     }
   },

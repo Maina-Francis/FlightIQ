@@ -1,4 +1,4 @@
-# FlytIQ — Flight Discovery & Price Tracking
+# FlightIQ — Flight Discovery & Price Tracking
 
 A dark, premium flight search site that earns from Skyscanner affiliate links, with local currency detection, price-drop alerts, and analytics events.
 
@@ -9,7 +9,7 @@ Your document specifies Next.js + Express + a separate Supabase project. This pl
 ## Phase 1 — App shell, brand, navbar, hero, search widget
 
 - Dark slate surface (#0F172A) with crisp ice light mode, indigo primary (#4F46E5), electric cyan accents (#06B6D4), emerald/crimson price indicators, glassmorphism cards, rounded-xl, Plus Jakarta Sans.
-- Header: wing/radar mark plus gradient "FlytIQ" logotype; right side has currency dropdown (flag, ISO code, symbol, tooltip "Detected location: … - Click to change"), dark/light toggle, "My Tracked Deals" button.
+- Header: wing/radar mark plus gradient "FlightIQ" logotype; right side has currency dropdown (flag, ISO code, symbol, tooltip "Detected location: … - Click to change"), dark/light toggle, "My Tracked Deals" button.
 - Hero: "Smart Flight Tracking. Zero Markup." with the subheadline.
 - Search widget: trip-type pills, origin/destination autocomplete with IATA chips (NBO, CPT, LHR…), departure/return date pickers, passengers and cabin class, glowing "Search Flights" CTA.
 

@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * FlytIQ design system — "Deep Teal Horizon".
+ * FlightIQ design system — "Deep Teal Horizon".
  * Default dark: ink teal (#06201F), mint primary (#2DD4BF), coral highlight (#FF7A66).
  * Light: ice-mint surface with deep teal foreground and teal-mint primary.
  * All colors are oklch semantic tokens — never hardcode colors in components.

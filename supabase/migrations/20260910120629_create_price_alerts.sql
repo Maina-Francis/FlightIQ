@@ -1,5 +1,5 @@
 /*
-# Create price_alerts table for FlytIQ tracked deals
+# Create price_alerts table for FlightIQ tracked deals
 
 1. New Tables
 - `price_alerts`

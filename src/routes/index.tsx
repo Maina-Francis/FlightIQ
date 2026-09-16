@@ -32,13 +32,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FlytIQ — Smart Flight Tracking. Zero Markup." },
+      { title: "FlightIQ — Smart Flight Tracking. Zero Markup." },
       {
         name: "description",
         content:
           "Track flight prices and get instant alerts when fares drop. Search flights, set price alerts via email or Telegram, and book directly with the airline. No hidden fees.",
       },
-      { property: "og:title", content: "FlytIQ — Smart Flight Tracking" },
+      { property: "og:title", content: "FlightIQ — Smart Flight Tracking" },
       {
         property: "og:description",
         content:
@@ -289,7 +289,7 @@ function Index() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-foreground">Price Drop Alert</p>
-                        <p className="text-[10px] text-muted-foreground">FlytIQ · just now</p>
+                        <p className="text-[10px] text-muted-foreground">FlightIQ · just now</p>
                       </div>
                     </div>
                     <div className="mt-3 space-y-2">
@@ -456,7 +456,7 @@ function Index() {
               Frequently Asked Questions
             </h2>
             <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-              Answers to common questions about flight price tracking and how FlytIQ helps you
+              Answers to common questions about flight price tracking and how FlightIQ helps you
               secure the best deals.
             </p>
           </div>
@@ -506,7 +506,7 @@ function Index() {
 
       <footer className="border-t border-border px-4 py-8 text-center text-sm text-muted-foreground sm:px-6 lg:px-8">
         <p>
-          FlytIQ — Flight discovery and price tracking. Fares are indicative and for comparison
+          FlightIQ — Flight discovery and price tracking. Fares are indicative and for comparison
           purposes.
         </p>
       </footer>

@@ -69,7 +69,7 @@ export function Navbar() {
               <Plane className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-foreground">
-              Flyt<span className="text-primary">IQ</span>
+              Flight<span className="text-primary">IQ</span>
             </span>
           </Link>
 

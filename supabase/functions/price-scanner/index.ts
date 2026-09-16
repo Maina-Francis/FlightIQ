@@ -146,7 +146,7 @@ async function sendEmailAlert(opts: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: { address: "alerts@flightIQ.app", name: "FlytIQ Alerts" },
+      from: { address: "alerts@flightIQ.app", name: "FlightIQ Alerts" },
       to: [{ email_address: { address: opts.email } }],
       subject: `✈️ Price Drop: ${opts.originIata} → ${opts.destinationIata} — ${opts.currency} ${opts.newPrice.toLocaleString()}`,
       htmlbody: `
@@ -163,7 +163,7 @@ async function sendEmailAlert(opts: {
             Book on Skyscanner →
           </a>
         </p>
-        <p style="font-size:12px;color:#888;">You're receiving this because you set a fare alert on FlytIQ. Visit FlytIQ to manage your alerts.</p>
+        <p style="font-size:12px;color:#888;">You're receiving this because you set a fare alert on FlightIQ. Visit FlightIQ to manage your alerts.</p>
       `,
     }),
   });

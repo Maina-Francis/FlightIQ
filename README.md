@@ -1,10 +1,10 @@
-# FlytIQ
+# FlightIQ
 
-# FlytIQ (flightIQ.app) – System Architecture & Product Requirements Document
+# FlightIQ (flightIQ.app) – System Architecture & Product Requirements Document
 
 ## Executive Summary & Full Technology Stack
 
-FlytIQ operates on a zero-friction, free-to-use affiliate monetization model. It monetizes user intent via Skyscanner referral links managed on Impact.com, earning Cost-Per-Click (CPC) and Cost-Per-Acquisition (CPA) commissions without paywalls.
+FlightIQ operates on a zero-friction, free-to-use affiliate monetization model. It monetizes user intent via Skyscanner referral links managed on Impact.com, earning Cost-Per-Click (CPC) and Cost-Per-Acquisition (CPA) commissions without paywalls.
 
 ### Core Engineering Tech Stack
 
@@ -43,7 +43,7 @@ FlytIQ operates on a zero-friction, free-to-use affiliate monetization model. It
 
 ## Getting Started Locally
 
-To run FlytIQ locally, ensure you have Node.js (v20+) and npm installed.
+To run FlightIQ locally, ensure you have Node.js (v20+) and npm installed.
 
 ### 1. Install Dependencies
 

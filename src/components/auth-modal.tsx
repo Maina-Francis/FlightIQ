@@ -103,7 +103,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             <Plane className="h-6 w-6 text-primary-foreground" />
           </div>
           <DialogTitle className="text-xl font-bold tracking-tight">
-            Sign in to FlytIQ
+            Sign in to FlightIQ
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             Track price drops, sync flight alerts across devices, and manage your deals with zero

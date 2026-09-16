@@ -19,7 +19,7 @@ const token = process.env["TELEGRAM_BOT_TOKEN"];
 if (!token) {
   // Warn at boot time; the bot simply won't function without a token.
   console.warn(
-    "[FlytIQ Telegram] TELEGRAM_BOT_TOKEN is not set. Bot will not handle updates.",
+    "[FlightIQ Telegram] TELEGRAM_BOT_TOKEN is not set. Bot will not handle updates.",
   );
 }
 
@@ -41,9 +41,9 @@ bot.command("start", async (ctx) => {
       );
 
     if (error) {
-      console.error("[FlytIQ Telegram] Failed to link account:", error.message);
+      console.error("[FlightIQ Telegram] Failed to link account:", error.message);
       await ctx.reply(
-        "⚠️ Hmm, something went wrong linking your account. Please try again from the FlytIQ website.",
+        "⚠️ Hmm, something went wrong linking your account. Please try again from the FlightIQ website.",
       );
       return;
     }
@@ -63,7 +63,7 @@ bot.command("start", async (ctx) => {
     "• `/track NBO CPT any` — Alert on any price drop\n" +
     "• `/deals` — View your active price trackers\n" +
     "• `/help` — Show all commands\n\n" +
-    "_Visit [FlytIQ](https://flightIQ.app) to set up alerts from your browser._",
+    "_Visit [FlightIQ](https://flightIQ.app) to set up alerts from your browser._",
     { parse_mode: "Markdown" },
   );
 });
@@ -112,7 +112,7 @@ bot.command("track", async (ctx) => {
   });
 
   if (error) {
-    console.error("[FlytIQ Telegram] /track insert failed:", error.message);
+    console.error("[FlightIQ Telegram] /track insert failed:", error.message);
     return ctx.reply("❌ Failed to set up price alert. Please try again.");
   }
 
@@ -148,7 +148,7 @@ bot.command("deals", async (ctx) => {
     .limit(10);
 
   if (error) {
-    console.error("[FlytIQ Telegram] /deals query failed:", error.message);
+    console.error("[FlightIQ Telegram] /deals query failed:", error.message);
     return ctx.reply("❌ Could not fetch your trackers right now. Please try again.");
   }
 
@@ -168,7 +168,7 @@ bot.command("deals", async (ctx) => {
 
   await ctx.reply(
     `📋 *Your Active Trackers:*\n\n${lines.join("\n")}\n\n` +
-    `_Visit [FlytIQ](https://flightIQ.app) to manage your alerts._`,
+    `_Visit [FlightIQ](https://flightIQ.app) to manage your alerts._`,
     { parse_mode: "Markdown" },
   );
 });
@@ -209,7 +209,7 @@ export type PriceDropPayload = {
 export async function sendPriceDropAlert(payload: PriceDropPayload): Promise<void> {
   const botToken = process.env["TELEGRAM_BOT_TOKEN"];
   if (!botToken) {
-    console.warn("[FlytIQ Telegram] Skipping alert — TELEGRAM_BOT_TOKEN not set.");
+    console.warn("[FlightIQ Telegram] Skipping alert — TELEGRAM_BOT_TOKEN not set.");
     return;
   }
 
@@ -242,6 +242,6 @@ export async function sendPriceDropAlert(payload: PriceDropPayload): Promise<voi
 
   if (!res.ok) {
     const body = await res.text();
-    console.error(`[FlytIQ Telegram] sendMessage failed (${res.status}): ${body}`);
+    console.error(`[FlightIQ Telegram] sendMessage failed (${res.status}): ${body}`);
   }
 }

@@ -35,7 +35,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error("[FlytIQ Root Error]", error);
+  console.error("[FlightIQ Root Error]", error);
   const router = useRouter();
 
   return (
@@ -74,21 +74,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "FlytIQ — Smart Flight Tracking" },
+      { title: "FlightIQ — Smart Flight Tracking" },
       {
         name: "description",
         content:
           "Find and track flights with real-time price drops, local currency support, and zero booking markup.",
       },
-      { name: "author", content: "FlytIQ" },
-      { property: "og:title", content: "FlytIQ — Smart Flight Tracking" },
+      { name: "author", content: "FlightIQ" },
+      { property: "og:title", content: "FlightIQ — Smart Flight Tracking" },
       {
         property: "og:description",
         content: "Find and track flights with price-drop alerts and local currency support.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@FlytIQ" },
+      { name: "twitter:site", content: "@FlightIQ" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

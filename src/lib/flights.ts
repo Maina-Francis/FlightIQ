@@ -1,6 +1,6 @@
 /**
  * flights.ts
- * Core FlytIQ domain types and presentation formatting helpers.
+ * Core FlightIQ domain types and presentation formatting helpers.
  * Safe for client-side and server-side consumption.
  */
 
