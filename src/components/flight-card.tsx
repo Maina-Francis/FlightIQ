@@ -6,6 +6,7 @@ import { formatPrice, getCurrency } from "@/lib/currency";
 import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
 import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
+import { BookingProviderModal } from "@/components/BookingProviderModal";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   searchParams: SearchParams;
   currency: string;
   onTrackPrice: (offer: FlightOffer) => void;
+  onBookDeal?: (offer: FlightOffer) => void;
 };
 
 // Airline brand styling helper
@@ -130,27 +132,20 @@ function AirlineLogo({
   );
 }
 
-export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Props) {
+export function FlightCard({
+  offer,
+  searchParams,
+  currency,
+  onTrackPrice,
+  onBookDeal,
+}: Props) {
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+
   function handleSelectDeal() {
-    const deepLink =
-      offer.skyscanner_link ||
-      offer.deepLink ||
-      buildSkyscannerDeepLink({
-        origin: offer.origin,
-        destination: offer.destination,
-        departureDate: searchParams.departureDate,
-        returnDate: searchParams.returnDate,
-        adults: searchParams.adults,
-        cabin: searchParams.cabin,
-        currency,
-      });
-    trackAffiliateClick({
-      airline: offer.airline,
-      price: offer.priceUsd,
-      currency,
-      skyscanner_deep_link: deepLink,
-    });
-    window.open(deepLink, "_blank", "noopener,noreferrer");
+    if (onBookDeal) {
+      onBookDeal(offer);
+    }
+    setBookingModalOpen(true);
   }
 
   const isDirect = offer.stops === 0;
@@ -316,6 +311,14 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Prop
           </Button>
         </div>
       </div>
+
+      <BookingProviderModal
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        offer={offer}
+        searchParams={searchParams}
+        currency={currency}
+      />
     </div>
   );
 }

@@ -26,7 +26,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const ZEPTO_API_KEY = Deno.env.get("ZEPTO_API_KEY");
-const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "flightIQ-pending";
+const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "";
 
 const RATE_LIMIT_HOURS = 24;
 
@@ -56,16 +56,16 @@ function buildSkyscannerLink(
   const compact = `${(year ?? "").slice(2)}${month ?? ""}${day ?? ""}`;
 
   const params = new URLSearchParams({
-    adults: "1",
+    adultsv2: "1",
     cabinclass: "economy",
     currency,
-    associateid: SKYSCANNER_PARTNER_ID,
-    utm_source: "flightIQ",
-    utm_medium: "affiliate",
-    utm_campaign: "price_alert",
   });
 
-  return `https://www.skyscanner.net/transport/flights/${origin.toLowerCase()}/${destination.toLowerCase()}/${compact}/?${params.toString()}`;
+  const destinationUrl = `https://www.skyscanner.net/transport/flights/${origin.toLowerCase()}/${destination.toLowerCase()}/${compact}/?${params.toString()}`;
+  if (!SKYSCANNER_PARTNER_ID) {
+    return destinationUrl;
+  }
+  return `https://skyscanner.pxf.io/c/${SKYSCANNER_PARTNER_ID}/1219808/13404?u=${encodeURIComponent(destinationUrl)}`;
 }
 
 // ─── Telegram Dispatch ────────────────────────────────────────────────────────

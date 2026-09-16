@@ -111,18 +111,6 @@ export function normalizeDuffelOffers(
       ? (import.meta.env["VITE_SKYSCANNER_PARTNER_ID"] as string | undefined)
       : undefined);
 
-  // Attach Skyscanner affiliate deep link for this route
-  const skyscannerLink = buildSkyscannerDeepLink({
-    origin: params.originIata,
-    destination: params.destinationIata,
-    departureDate: params.departureDate,
-    returnDate: params.returnDate ?? undefined,
-    adults: params.adults,
-    cabinClass: params.cabinClass,
-    currency: requestedCurrency,
-    mediaPartnerId,
-  });
-
   // Exclude Duffel Airways (Duffel's synthetic sandbox airline, IATA code "ZZ")
   const realOffers = offers.filter((offer) => {
     const ownerName = offer.owner?.name?.toLowerCase() ?? "";
@@ -197,6 +185,21 @@ export function normalizeDuffelOffers(
     }
 
     const stops = Math.max(0, segments.length - 1);
+    const departingAt = firstSegment?.departing_at;
+
+    const offerSkyscannerLink = buildSkyscannerDeepLink({
+      origin: params.originIata,
+      destination: params.destinationIata,
+      departureDate: params.departureDate,
+      returnDate: params.returnDate ?? undefined,
+      adults: params.adults,
+      cabinClass: params.cabinClass,
+      currency: requestedCurrency,
+      mediaPartnerId,
+      carrierCode: carrierCode !== "??" ? carrierCode : undefined,
+      stops,
+      departureTime: departingAt || departTime,
+    });
 
     return {
       id: offer.id ?? `duffel-${idx}`,
@@ -208,13 +211,15 @@ export function normalizeDuffelOffers(
       dropPercent: 0,
       departTime,
       arriveTime,
+      departingAt,
       durationMinutes,
       stops,
       origin: params.originIata,
       destination: params.destinationIata,
       bestLocalFare: false,
-      skyscanner_link: skyscannerLink,
-      deepLink: skyscannerLink,
+      skyscanner_link: offerSkyscannerLink,
+      deepLink: offerSkyscannerLink,
+      rawOffer: offer,
     };
   });
 

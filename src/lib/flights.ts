@@ -32,7 +32,7 @@ export type FlightOffer = {
   id: string;
   airline: string;
   airlineCode: string;
-  airlineLogo?: string | null;
+  airlineLogo?: string | null | undefined;
   /** Base price in USD; converted at render time to the active currency. */
   priceUsd: number;
   /** Typical price for this route in USD, used to show price drops. */
@@ -45,8 +45,10 @@ export type FlightOffer = {
   origin: string;
   destination: string;
   bestLocalFare: boolean;
-  skyscanner_link?: string;
-  deepLink?: string;
+  skyscanner_link?: string | undefined;
+  deepLink?: string | undefined;
+  departingAt?: string | undefined;
+  rawOffer?: any;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
