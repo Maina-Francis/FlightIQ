@@ -16,7 +16,7 @@ import { useCurrencyStore, useThemeStore } from "@/lib/store";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
 import { findAirport, registerAirport } from "@/lib/airports";
 import { getAirportByIataFn } from "@/lib/airports.functions";
-import { formatPrice, getCurrency } from "@/lib/currency";
+import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import {
   ArrowLeft,
   Filter,
@@ -182,17 +182,20 @@ function SearchPage() {
     trackPageView("/search");
   }, [hydrateTheme]);
 
-  // Calculate currency-adjusted min & max prices for slider bounds
-  const currencyRate = getCurrency(currency).rate;
+  // Calculate min & max prices in the active display currency.
   const minOfferPrice = useMemo(() => {
     if (offers.length === 0) return 0;
-    return Math.floor(Math.min(...offers.map((o) => o.priceUsd * currencyRate)));
-  }, [offers, currencyRate]);
+    return Math.floor(
+      Math.min(...offers.map((o) => convertCurrencyAmount(o.price, o.currency, currency))),
+    );
+  }, [offers, currency]);
 
   const maxOfferPrice = useMemo(() => {
     if (offers.length === 0) return 1000;
-    return Math.ceil(Math.max(...offers.map((o) => o.priceUsd * currencyRate)));
-  }, [offers, currencyRate]);
+    return Math.ceil(
+      Math.max(...offers.map((o) => convertCurrencyAmount(o.price, o.currency, currency))),
+    );
+  }, [offers, currency]);
 
   useEffect(() => {
     setPriceRange([minOfferPrice, maxOfferPrice]);
@@ -234,40 +237,45 @@ function SearchPage() {
       }
 
       // Filter by Price
-      const convertedPrice = offer.priceUsd * currencyRate;
+      const convertedPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
       if (convertedPrice < priceRange[0] || convertedPrice > priceRange[1]) {
         return false;
       }
 
       return true;
     });
-  }, [offers, selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, currencyRate]);
+  }, [offers, selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, currency]);
 
   // Sorting logic: Cheapest, Fastest, Best Value
   const sortedOffers = useMemo(() => {
     if (filteredOffers.length === 0) return [];
-    const minPrice = Math.min(...filteredOffers.map((o) => o.priceUsd));
+    const minPrice = Math.min(
+      ...filteredOffers.map((o) => convertCurrencyAmount(o.price, o.currency, currency)),
+    );
     const minDuration = Math.min(...filteredOffers.map((o) => o.durationMinutes));
 
     return [...filteredOffers].sort((a, b) => {
       if (activeSort === "cheapest") {
-        return a.priceUsd - b.priceUsd;
+        return (
+          convertCurrencyAmount(a.price, a.currency, currency) -
+          convertCurrencyAmount(b.price, b.currency, currency)
+        );
       }
       if (activeSort === "fastest") {
         return a.durationMinutes - b.durationMinutes;
       }
       // "best_value": Balanced score (price + duration - price drop discount)
       const scoreA =
-        (a.priceUsd / (minPrice || 1)) * 0.6 +
+        (convertCurrencyAmount(a.price, a.currency, currency) / (minPrice || 1)) * 0.6 +
         (a.durationMinutes / (minDuration || 1)) * 0.4 -
         (a.dropPercent / 100) * 0.2;
       const scoreB =
-        (b.priceUsd / (minPrice || 1)) * 0.6 +
+        (convertCurrencyAmount(b.price, b.currency, currency) / (minPrice || 1)) * 0.6 +
         (b.durationMinutes / (minDuration || 1)) * 0.4 -
         (b.dropPercent / 100) * 0.2;
       return scoreA - scoreB;
     });
-  }, [filteredOffers, activeSort]);
+  }, [filteredOffers, activeSort, currency]);
 
   // ─── Pagination State & Calculations ──────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
@@ -609,7 +617,7 @@ function SearchPage() {
                       Price Range
                     </Label>
                     <span className="text-xs font-mono font-bold text-foreground">
-                      {formatPrice(priceRange[1] / currencyRate, currency)}
+                      {formatCurrencyAmount(priceRange[1], currency)}
                     </span>
                   </div>
 
@@ -626,8 +634,8 @@ function SearchPage() {
                       className="my-3"
                     />
                     <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
-                      <span>{formatPrice(priceRange[0] / currencyRate, currency)}</span>
-                      <span>{formatPrice(priceRange[1] / currencyRate, currency)}</span>
+                      <span>{formatCurrencyAmount(priceRange[0], currency)}</span>
+                      <span>{formatCurrencyAmount(priceRange[1], currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -841,7 +849,7 @@ function SearchPage() {
                         Price Range
                       </Label>
                       <span className="text-xs font-mono font-bold text-foreground">
-                        {formatPrice(priceRange[1] / currencyRate, currency)}
+                        {formatCurrencyAmount(priceRange[1], currency)}
                       </span>
                     </div>
                     <div className="mt-3.5">
@@ -857,8 +865,8 @@ function SearchPage() {
                         className="my-3"
                       />
                       <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
-                        <span>{formatPrice(priceRange[0] / currencyRate, currency)}</span>
-                        <span>{formatPrice(priceRange[1] / currencyRate, currency)}</span>
+                        <span>{formatCurrencyAmount(priceRange[0], currency)}</span>
+                        <span>{formatCurrencyAmount(priceRange[1], currency)}</span>
                       </div>
                     </div>
                   </div>
@@ -1170,7 +1178,7 @@ function SearchPage() {
           departureDate={searchParams.departureDate}
           returnDate={searchParams.returnDate}
           currency={currency}
-          currentPriceUsd={alertOffer.priceUsd}
+          currentPrice={convertCurrencyAmount(alertOffer.price, alertOffer.currency, currency)}
         />
       )}
     </div>

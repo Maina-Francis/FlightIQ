@@ -15,14 +15,14 @@ import {
 } from "./flights";
 import {
   fetchFlightPrices,
+  buildAviasalesOfferUrl,
   buildAviasalesPartnerUrl,
-  TRAVELPAYOUTS_MARKER,
 } from "./travelpayouts";
 
 // ─── Price Drop Detection via Supabase Cache ──────────────────────────────────
 
 async function computePriceDrops(
-  offers: { priceUsd: number; origin: string; destination: string }[],
+  offers: { price: number; origin: string; destination: string; currency: string }[],
   departureDate: string,
 ): Promise<Map<string, number>> {
   const dropMap = new Map<string, number>();
@@ -33,7 +33,7 @@ async function computePriceDrops(
   try {
     const routeKeys = [
       ...new Set(
-        offers.map((o) => `${o.origin}-${o.destination}-${departureDate}`),
+        offers.map((o) => `${o.origin}-${o.destination}-${departureDate}-${o.currency}`),
       ),
     ];
 
@@ -48,9 +48,9 @@ async function computePriceDrops(
 
     const currentCheapest = new Map<string, number>();
     for (const offer of offers) {
-      const key = `${offer.origin}-${offer.destination}-${departureDate}`;
+      const key = `${offer.origin}-${offer.destination}-${departureDate}-${offer.currency}`;
       const existing = currentCheapest.get(key) ?? Infinity;
-      if (offer.priceUsd < existing) currentCheapest.set(key, offer.priceUsd);
+      if (offer.price < existing) currentCheapest.set(key, offer.price);
     }
 
     const upserts: {
@@ -74,7 +74,7 @@ async function computePriceDrops(
       upserts.push({
         route_key: key,
         cheapest_price: currentPrice,
-        currency: "USD",
+        currency: key.split("-").at(-1) ?? "USD",
         skyscanner_link: `https://www.skyscanner.net/transport/flights/${key}/`,
         updated_at: new Date().toISOString(),
       });
@@ -103,12 +103,14 @@ async function computePriceDrops(
 export async function searchLiveFlights(
   params: SearchLiveFlightsParams,
 ): Promise<FlightOffer[]> {
+  const responseCurrency = (params.currency || "USD").toUpperCase();
+
   const dataPrices = await fetchFlightPrices({
     origin: params.originIata,
     destination: params.destinationIata,
     departureDate: params.departureDate,
     returnDate: params.returnDate ?? undefined,
-    currency: (params.currency || "usd").toLowerCase(),
+    currency: responseCurrency.toLowerCase(),
   });
 
   const partnerSearchUrl = buildAviasalesPartnerUrl({
@@ -140,11 +142,7 @@ export async function searchLiveFlights(
       }
     }
 
-    const itemLink = item.link
-      ? item.link.startsWith("http")
-        ? item.link
-        : `https://www.aviasales.com${item.link}${item.link.includes("?") ? "&" : "?"}marker=${TRAVELPAYOUTS_MARKER}`
-      : partnerSearchUrl;
+    const itemLink = buildAviasalesOfferUrl(item.link, partnerSearchUrl);
 
     const skyscannerLink = buildSkyscannerDeepLink({
       origin: params.originIata,
@@ -164,7 +162,8 @@ export async function searchLiveFlights(
         providerId: item.gate || `gate-${idx}`,
         providerName: item.gate || "Aviasales / OTAs",
         providerType: "ota",
-        priceUsd: item.price,
+        price: item.price,
+        currency: responseCurrency,
         deepLink: itemLink,
         isRecommended: true,
       },
@@ -175,8 +174,9 @@ export async function searchLiveFlights(
       airline: carrierCode,
       airlineCode: carrierCode,
       airlineLogo: carrierLogo,
-      priceUsd: item.price,
-      baselineUsd: item.price,
+      price: item.price,
+      baselinePrice: item.price,
+      currency: responseCurrency,
       dropPercent: 0,
       departTime,
       arriveTime,
@@ -197,15 +197,15 @@ export async function searchLiveFlights(
   const dropMap = await computePriceDrops(normalized, params.departureDate);
 
   for (const offer of normalized) {
-    const key = `${offer.origin}-${offer.destination}-${params.departureDate}`;
+    const key = `${offer.origin}-${offer.destination}-${params.departureDate}-${offer.currency}`;
     const drop = dropMap.get(key) ?? 0;
     offer.dropPercent = drop;
     if (drop > 0) {
-      offer.baselineUsd = Math.round(offer.priceUsd / (1 - drop / 100));
+      offer.baselinePrice = Math.round(offer.price / (1 - drop / 100));
     }
   }
 
-  normalized.sort((a, b) => a.priceUsd - b.priceUsd);
+  normalized.sort((a, b) => a.price - b.price);
   if (normalized[0]) {
     normalized[0].bestLocalFare = true;
   }

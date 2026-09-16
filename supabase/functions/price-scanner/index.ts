@@ -217,13 +217,17 @@ Deno.serve(async (req: Request) => {
     const updatePromises: Promise<unknown>[] = [];
 
     for (const record of trackers) {
-      const routeKey = `${record.origin_iata}-${record.destination_iata}-${record.departure_date}`;
+      const currency = record.currency ?? "USD";
+      const routeKey = `${record.origin_iata}-${record.destination_iata}-${record.departure_date}-${currency}`;
+      const legacyRouteKey = `${record.origin_iata}-${record.destination_iata}-${record.departure_date}`;
 
       // 2. Look up cached price for this route
       const { data: cache } = await supabase
         .from("flight_price_cache")
         .select("cheapest_price, skyscanner_link, currency")
-        .eq("route_key", routeKey)
+        .in("route_key", [routeKey, legacyRouteKey])
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (!cache) {
@@ -285,20 +289,20 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const currency = record.currency ?? cache.currency ?? "USD";
+      const alertCurrency = record.currency ?? cache.currency ?? "USD";
       const skyscannerLink =
         cache.skyscanner_link ||
         buildSkyscannerLink(
           record.origin_iata,
           record.destination_iata,
           record.departure_date,
-          currency,
+          alertCurrency,
         );
 
       const alertOpts = {
         originIata: record.origin_iata,
         destinationIata: record.destination_iata,
-        currency,
+        currency: alertCurrency,
         newPrice: cachedPrice,
         targetPrice: displayTargetPrice,
         departureDate: record.departure_date,

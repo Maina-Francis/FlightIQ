@@ -18,7 +18,7 @@ import {
   Building2,
   Calendar,
 } from "lucide-react";
-import { formatPrice } from "@/lib/currency";
+import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
 import { buildSkyscannerDeepLink, getAirlineWebsite } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
@@ -76,11 +76,12 @@ export function BookingProviderModal({
   });
 
   const airlineWebsiteUrl = getAirlineWebsite(offer.airlineCode, offer.airline);
+  const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
 
   function handleBookSkyscanner() {
     trackAffiliateClick({
       airline: offer.airline,
-      price: offer.priceUsd,
+      price: displayPrice,
       currency,
       skyscanner_deep_link: skyscannerUrl,
     });
@@ -91,7 +92,7 @@ export function BookingProviderModal({
   function handleBookAirlineDirect() {
     trackAffiliateClick({
       airline: offer.airline,
-      price: offer.priceUsd,
+      price: displayPrice,
       currency,
       skyscanner_deep_link: airlineWebsiteUrl,
     });
@@ -99,10 +100,15 @@ export function BookingProviderModal({
     onOpenChange(false);
   }
 
-  function handleBookOption(opt: { providerName: string; priceUsd: number; deepLink: string }) {
+  function handleBookOption(opt: {
+    providerName: string;
+    price: number;
+    currency: string;
+    deepLink: string;
+  }) {
     trackAffiliateClick({
       airline: offer.airline,
-      price: opt.priceUsd,
+      price: convertCurrencyAmount(opt.price, opt.currency, currency),
       currency,
       skyscanner_deep_link: opt.deepLink,
     });
@@ -149,7 +155,7 @@ export function BookingProviderModal({
               {/* FlightIQ Fare Highlight */}
               <div className="text-right">
                 <span className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-                  {formatPrice(offer.priceUsd, currency)}
+                  {formatCurrencyAmount(displayPrice, currency)}
                 </span>
                 <span className="block text-[11px] font-medium text-muted-foreground">/ pax</span>
               </div>
@@ -276,7 +282,10 @@ export function BookingProviderModal({
 
                     <div className="flex shrink-0 items-center sm:flex-col sm:items-end gap-2">
                       <span className="text-lg font-extrabold text-foreground sm:text-xl">
-                        {formatPrice(opt.priceUsd, currency)}
+                        {formatCurrencyAmount(
+                          convertCurrencyAmount(opt.price, opt.currency, currency),
+                          currency,
+                        )}
                       </span>
                       <Button
                         type="button"
@@ -318,7 +327,7 @@ export function BookingProviderModal({
                       <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1 text-success">
                           <Check className="h-3.5 w-3.5" />
-                          Verified {formatPrice(offer.priceUsd, currency)} fare
+                          Verified {formatCurrencyAmount(displayPrice, currency)} fare
                         </span>
                         <span>•</span>
                         <span>Multiple OTA comparisons</span>
@@ -327,7 +336,7 @@ export function BookingProviderModal({
 
                     <div className="flex shrink-0 items-center sm:flex-col sm:items-end gap-2">
                       <span className="text-lg font-extrabold text-foreground sm:text-xl">
-                        {formatPrice(offer.priceUsd, currency)}
+                        {formatCurrencyAmount(displayPrice, currency)}
                       </span>
                       <Button
                         type="button"

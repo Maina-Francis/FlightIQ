@@ -121,6 +121,15 @@ export function buildAviasalesPartnerUrl(params: {
 
 export const buildAviasalesSearchLink = buildAviasalesPartnerUrl;
 
+export function buildAviasalesOfferUrl(link: string | null | undefined, fallbackUrl: string): string {
+  if (!link) return fallbackUrl;
+  const baseUrl = link.startsWith("http") ? link : `https://www.aviasales.com${link}`;
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return baseUrl.includes("marker=")
+    ? baseUrl
+    : `${baseUrl}${separator}marker=${TRAVELPAYOUTS_MARKER}`;
+}
+
 // ─── Travelpayouts Places Autocomplete API ────────────────────────────────────
 
 export interface TravelpayoutsPlace {

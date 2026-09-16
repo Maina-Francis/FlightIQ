@@ -32,7 +32,8 @@ export type FlightBookingOption = {
   providerId: string;
   providerName: string;
   providerType?: "ota" | "airline" | "meta";
-  priceUsd: number;
+  price: number;
+  currency: string;
   deepLink: string;
   isCarrierDirect?: boolean;
   isRecommended?: boolean;
@@ -43,10 +44,11 @@ export type FlightOffer = {
   airline: string;
   airlineCode: string;
   airlineLogo?: string | null | undefined;
-  /** Base price in USD (lowest available across providers); converted at render time. */
-  priceUsd: number;
-  /** Typical price for this route in USD, used to show price drops. */
-  baselineUsd: number;
+  /** Lowest available fare in `currency`, as returned by the flight provider. */
+  price: number;
+  /** Typical fare in `currency`, used to show price drops. */
+  baselinePrice: number;
+  currency: string;
   dropPercent: number;
   departTime: string;
   arriveTime: string;

@@ -26,8 +26,6 @@ import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useThemeStore } from "@/lib/store";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
-import { formatPrice } from "@/lib/currency";
-import { useCurrencyStore } from "@/lib/store";
 import { findAirport, registerAirport } from "@/lib/airports";
 import { getAirportByIataFn } from "@/lib/airports.functions";
 import { toast } from "sonner";
@@ -64,7 +62,6 @@ type PriceTrackerRow = {
 
 function DealsPage() {
   const { hydrate: hydrateTheme } = useThemeStore();
-  const { currency } = useCurrencyStore();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [trackers, setTrackers] = useState<PriceTrackerRow[]>([]);

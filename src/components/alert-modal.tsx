@@ -22,7 +22,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, getCurrency } from "@/lib/currency";
+import { formatCurrencyAmount } from "@/lib/currency";
 import { findAirport, registerAirport } from "@/lib/airports";
 import { getAirportByIataFn } from "@/lib/airports.functions";
 import { trackPriceAlertCreated } from "@/lib/analytics";
@@ -39,7 +39,7 @@ type Props = {
   departureDate: string;
   returnDate?: string | null | undefined;
   currency: string;
-  currentPriceUsd: number;
+  currentPrice: number;
 };
 
 type Channel = "email" | "telegram";
@@ -52,10 +52,9 @@ export function AlertModal({
   departureDate,
   returnDate,
   currency,
-  currentPriceUsd,
+  currentPrice,
 }: Props) {
-  const currencyRate = getCurrency(currency).rate;
-  const currentPriceInCurrency = Math.round(currentPriceUsd * currencyRate);
+  const currentPriceInCurrency = Math.round(currentPrice);
 
   const [targetPrice, setTargetPrice] = useState<string>("");
   const [alertOnAnyDrop, setAlertOnAnyDrop] = useState<boolean>(false);
@@ -173,7 +172,7 @@ export function AlertModal({
 
       trackPriceAlertCreated({
         route: `${origin} → ${destination}`,
-        target_price: Math.round(finalTargetPrice / currencyRate),
+        target_price: Math.round(finalTargetPrice),
         channel,
       });
 
@@ -215,8 +214,8 @@ export function AlertModal({
                 Monitoring {origin} → {destination} for price drops below{" "}
                 <span className="font-semibold text-foreground">
                   {alertOnAnyDrop
-                    ? formatPrice(currentPriceInCurrency / currencyRate, currency)
-                    : formatPrice(Number(targetPrice) / currencyRate, currency)}
+                    ? formatCurrencyAmount(currentPriceInCurrency, currency)
+                    : formatCurrencyAmount(Number(targetPrice), currency)}
                 </span>
                 .
               </p>
@@ -259,7 +258,7 @@ export function AlertModal({
                   </span>
                 </div>
                 <span className="font-mono font-bold text-primary">
-                  {formatPrice(currentPriceUsd, currency)}
+                  {formatCurrencyAmount(currentPrice, currency)}
                 </span>
               </div>
               <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -276,7 +275,7 @@ export function AlertModal({
                   Target Price ({currency})
                 </Label>
                 <span className="text-[11px] text-muted-foreground">
-                  Current: {formatPrice(currentPriceUsd, currency)}
+                  Current: {formatCurrencyAmount(currentPrice, currency)}
                 </span>
               </div>
 

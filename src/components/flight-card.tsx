@@ -2,7 +2,7 @@ import { useState } from "react";
 import { TrendingDown, Sparkles, ExternalLink, Bell, Clock, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice, getCurrency } from "@/lib/currency";
+import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
 import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
@@ -155,7 +155,13 @@ export function FlightCard({
       ? "1 Stopover"
       : `${offer.stops} Stopovers`;
 
-  const isConvertedFromUsd = currency !== "USD";
+  const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
+  const displayBaselinePrice = convertCurrencyAmount(
+    offer.baselinePrice,
+    offer.currency,
+    currency,
+  );
+  const isConverted = offer.currency !== currency;
 
   return (
     <div className="glass-panel group relative overflow-hidden rounded-2xl border border-border/70 p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-xl sm:p-6">
@@ -270,20 +276,20 @@ export function FlightCard({
         <div>
           {offer.dropPercent > 0 && (
             <p className="text-xs text-muted-foreground line-through font-mono">
-              {formatPrice(offer.baselineUsd, currency)}
+              {formatCurrencyAmount(displayBaselinePrice, currency)}
             </p>
           )}
 
           <div className="flex items-baseline gap-1.5">
             <span className="text-4xl font-black tracking-tight text-foreground">
-              {formatPrice(offer.priceUsd, currency)}
+              {formatCurrencyAmount(displayPrice, currency)}
             </span>
             <span className="text-xs font-medium text-muted-foreground">/ pax</span>
           </div>
 
-          {isConvertedFromUsd && (
+          {isConverted && (
             <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-              ~ ${offer.priceUsd.toLocaleString()} USD · No markup
+              ~ {formatCurrencyAmount(offer.price, offer.currency)} · No markup
             </p>
           )}
         </div>
