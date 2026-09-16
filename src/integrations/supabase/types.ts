@@ -10,10 +10,34 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
+      flight_price_cache: {
+        Row: {
+          cheapest_price: number
+          currency: string
+          route_key: string
+          skyscanner_link: string
+          updated_at: string
+        }
+        Insert: {
+          cheapest_price: number
+          currency?: string
+          route_key: string
+          skyscanner_link?: string
+          updated_at?: string
+        }
+        Update: {
+          cheapest_price?: number
+          currency?: string
+          route_key?: string
+          skyscanner_link?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_trackers: {
         Row: {
           created_at: string
