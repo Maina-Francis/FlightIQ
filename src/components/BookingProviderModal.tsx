@@ -8,19 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  ExternalLink,
-  Clock,
-  Plane,
-  ShieldCheck,
-  Check,
-  Sparkles,
-  Building2,
-  Calendar,
-} from "lucide-react";
+import { ExternalLink, Clock, Plane, ShieldCheck, Check, Sparkles, Calendar } from "lucide-react";
 import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
-import { buildSkyscannerDeepLink, getAirlineWebsite } from "@/lib/affiliate";
+import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +21,25 @@ interface BookingProviderModalProps {
   offer: FlightOffer;
   searchParams: SearchParams;
   currency: string;
+}
+
+const AVIASALES_MARKER = "778298";
+
+function buildAviasalesFallbackUrl(params: {
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string | null | undefined;
+  adults: number;
+}) {
+  const formatDDMM = (date: string) => {
+    const [, month, day] = date.split("-");
+    return `${day ?? ""}${month ?? ""}`;
+  };
+  const dep = formatDDMM(params.departureDate);
+  const ret = params.returnDate ? formatDDMM(params.returnDate) : "";
+  const route = `${params.origin.toUpperCase()}${dep}${params.destination.toUpperCase()}${ret}${params.adults}`;
+  return `https://www.aviasales.com/search/${route}?marker=${AVIASALES_MARKER}`;
 }
 
 export function BookingProviderModal({
@@ -49,10 +59,7 @@ export function BookingProviderModal({
       ? Math.max(0, rawSegments.length - 1)
       : (offer.stops ?? 0);
 
-  const departureTime =
-    rawSegments?.[0]?.departing_at ??
-    offer.departingAt ??
-    offer.departTime;
+  const departureTime = rawSegments?.[0]?.departing_at ?? offer.departingAt ?? offer.departTime;
 
   const isDirect = stops === 0;
   const stopoverText = isDirect
@@ -60,6 +67,18 @@ export function BookingProviderModal({
     : stops === 1
       ? "1 Stopover"
       : `${stops} Stopovers`;
+
+  const aviasalesUrl =
+    offer.deepLink ||
+    offer.bookingOptions?.find((opt) => opt.isRecommended)?.deepLink ||
+    offer.bookingOptions?.[0]?.deepLink ||
+    buildAviasalesFallbackUrl({
+      origin: offer.origin,
+      destination: offer.destination,
+      departureDate: searchParams.departureDate,
+      returnDate: searchParams.returnDate,
+      adults: searchParams.adults,
+    });
 
   // Build the enhanced Skyscanner deep link with exact stops and outboundtime window
   const skyscannerUrl = buildSkyscannerDeepLink({
@@ -75,8 +94,18 @@ export function BookingProviderModal({
     departureTime,
   });
 
-  const airlineWebsiteUrl = getAirlineWebsite(offer.airlineCode, offer.airline);
   const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
+
+  function handleBookAviasales() {
+    trackAffiliateClick({
+      airline: offer.airline,
+      price: displayPrice,
+      currency,
+      skyscanner_deep_link: aviasalesUrl,
+    });
+    window.open(aviasalesUrl, "_blank", "noopener,noreferrer");
+    onOpenChange(false);
+  }
 
   function handleBookSkyscanner() {
     trackAffiliateClick({
@@ -89,38 +118,11 @@ export function BookingProviderModal({
     onOpenChange(false);
   }
 
-  function handleBookAirlineDirect() {
-    trackAffiliateClick({
-      airline: offer.airline,
-      price: displayPrice,
-      currency,
-      skyscanner_deep_link: airlineWebsiteUrl,
-    });
-    window.open(airlineWebsiteUrl, "_blank", "noopener,noreferrer");
-    onOpenChange(false);
-  }
-
-  function handleBookOption(opt: {
-    providerName: string;
-    price: number;
-    currency: string;
-    deepLink: string;
-  }) {
-    trackAffiliateClick({
-      airline: offer.airline,
-      price: convertCurrencyAmount(opt.price, opt.currency, currency),
-      currency,
-      skyscanner_deep_link: opt.deepLink,
-    });
-    window.open(opt.deepLink, "_blank", "noopener,noreferrer");
-    onOpenChange(false);
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl">
         {/* Header Banner */}
-        <div className="border-b border-border/70 bg-gradient-to-br from-card/80 via-card/50 to-primary/5 p-6 sm:p-7">
+        <div className="border-b border-border/70 bg-linear-to-br from-card/80 via-card/50 to-primary/5 p-6 sm:p-7">
           <DialogHeader className="text-left space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -208,204 +210,112 @@ export function BookingProviderModal({
           <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-card/50 p-3 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Prices and availability are verified with our partner booking platforms. Choose your
-              preferred booking provider below to complete your reservation.
+              Continue through a verified partner link. Aviasales opens live metasearch results
+              where you can compare Trip.com, Kiwi, eDreams, and official airline fares.
             </DialogDescription>
           </div>
 
           {/* Provider Selection Options */}
           <div className="space-y-3 pt-1">
-            {offer.bookingOptions && offer.bookingOptions.length > 0 ? (
-              // Multi-provider pricing from Travelpayouts (Trip.com, Kiwi, Airline Direct, etc.)
-              offer.bookingOptions.map((opt, idx) => (
-                <div
-                  key={opt.providerId || idx}
-                  className={cn(
-                    "group relative overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all hover:shadow-lg",
-                    opt.isRecommended
-                      ? "border-2 border-primary/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent hover:border-primary"
-                      : "border-border/80 bg-card/40 hover:border-border hover:bg-card/70",
-                  )}
+            <div className="group relative overflow-hidden rounded-2xl border-2 border-primary/50 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-4 transition-all hover:border-primary hover:shadow-lg sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <span className="text-base font-bold text-foreground">
+                      Aviasales Metasearch Engine
+                    </span>
+                    <Badge className="bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                      Recommended
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Opens verified live fares across Aviasales partner sellers, including Trip.com,
+                    Kiwi, eDreams, and official airlines.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1 text-success font-medium">
+                      <Check className="h-3.5 w-3.5" />
+                      Partner link includes marker=778298
+                    </span>
+                    <span>•</span>
+                    <span>Best for matching the displayed fare</span>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+                  <span className="text-lg font-extrabold text-foreground sm:text-xl">
+                    {formatCurrencyAmount(displayPrice, currency)}
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={handleBookAviasales}
+                    className="glow-cta w-full gap-1.5 rounded-xl font-bold shadow-md sm:w-auto"
+                    size="sm"
+                  >
+                    <span>Open Aviasales</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-2xl border border-border/80 bg-card/40 p-4 transition-all hover:border-border hover:bg-card/70 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-400">
+                      <ExternalLink className="h-4 w-4" />
+                    </div>
+                    <span className="text-base font-bold text-foreground">
+                      Skyscanner Comparison
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="border-border text-[10px] text-muted-foreground"
+                    >
+                      Fallback
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Opens a filtered comparison page for this route, carrier, stops, cabin, and
+                    departure window.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                      Useful for cross-checking prices
+                    </span>
+                    <span>•</span>
+                    <span>Fares may differ from the Aviasales result</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBookSkyscanner}
+                  className="w-full gap-1.5 rounded-xl border-border font-semibold hover:bg-accent sm:w-auto"
+                  size="sm"
                 >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded-lg",
-                            opt.isRecommended
-                              ? "bg-primary/20 text-primary"
-                              : opt.isCarrierDirect
-                                ? "bg-muted text-muted-foreground"
-                                : "bg-sky-500/20 text-sky-400",
-                          )}
-                        >
-                          {opt.isCarrierDirect ? (
-                            <Building2 className="h-4 w-4" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                        </div>
-                        <span className="font-bold text-foreground text-base">
-                          {opt.providerName}
-                        </span>
-                        {opt.isRecommended && (
-                          <Badge className="bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground uppercase tracking-wide">
-                            Best Fare
-                          </Badge>
-                        )}
-                        {opt.isCarrierDirect && !opt.isRecommended && (
-                          <Badge
-                            variant="outline"
-                            className="border-border text-[10px] text-muted-foreground"
-                          >
-                            Official Airline
-                          </Badge>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        {opt.isCarrierDirect
-                          ? `Direct reservation on ${offer.airline}'s official booking portal.`
-                          : `Verified OTA partner fare with instant e-ticket issuance.`}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1 text-success font-medium">
-                          <Check className="h-3.5 w-3.5" />
-                          100% Price Parity Guaranteed
-                        </span>
-                        <span>•</span>
-                        <span>Pre-monetized Direct Link</span>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center sm:flex-col sm:items-end gap-2">
-                      <span className="text-lg font-extrabold text-foreground sm:text-xl">
-                        {formatCurrencyAmount(
-                          convertCurrencyAmount(opt.price, opt.currency, currency),
-                          currency,
-                        )}
-                      </span>
-                      <Button
-                        type="button"
-                        onClick={() => handleBookOption(opt)}
-                        className={cn(
-                          "gap-1.5 rounded-xl font-bold shadow-md w-full sm:w-auto",
-                          opt.isRecommended ? "glow-cta" : "variant-outline border-border",
-                        )}
-                        size="sm"
-                      >
-                        <span>Book on {opt.providerName}</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              // Default Fallback Providers
-              <>
-                {/* Option 1: Skyscanner (Recommended) */}
-                <div className="group relative overflow-hidden rounded-2xl border-2 border-primary/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-5 transition-all hover:border-primary hover:shadow-lg">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-400">
-                          <Sparkles className="h-4 w-4" />
-                        </div>
-                        <span className="font-bold text-foreground text-base">Skyscanner</span>
-                        <Badge className="bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground uppercase tracking-wide">
-                          Recommended
-                        </Badge>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        Matches exact flight ({stopoverText.toLowerCase()} · departing {offer.departTime} window).
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1 text-success">
-                          <Check className="h-3.5 w-3.5" />
-                          Verified {formatCurrencyAmount(displayPrice, currency)} fare
-                        </span>
-                        <span>•</span>
-                        <span>Multiple OTA comparisons</span>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center sm:flex-col sm:items-end gap-2">
-                      <span className="text-lg font-extrabold text-foreground sm:text-xl">
-                        {formatCurrencyAmount(displayPrice, currency)}
-                      </span>
-                      <Button
-                        type="button"
-                        onClick={handleBookSkyscanner}
-                        className="glow-cta gap-1.5 rounded-xl font-bold shadow-md w-full sm:w-auto"
-                        size="sm"
-                      >
-                        <span>Book on Skyscanner</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Option 2: Official Airline Site (Fallback Direct) */}
-                <div className="group relative overflow-hidden rounded-2xl border border-border/80 bg-card/40 p-4 sm:p-5 transition-all hover:border-border hover:bg-card/70">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                          <Building2 className="h-4 w-4" />
-                        </div>
-                        <span className="font-bold text-foreground text-sm sm:text-base">
-                          {offer.airline} Direct
-                        </span>
-                        <Badge variant="outline" className="border-border text-[10px] text-muted-foreground">
-                          Official Airline
-                        </Badge>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        Book directly on {offer.airline}’s official reservation portal.
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Check className="h-3.5 w-3.5 text-primary" />
-                          Earn airline frequent flyer miles
-                        </span>
-                        <span>•</span>
-                        <span>Direct airline support & rebooking</span>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center sm:flex-col sm:items-end gap-2">
-                      <span className="text-xs text-muted-foreground font-medium hidden sm:block">
-                        Direct carrier fare
-                      </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleBookAirlineDirect}
-                        className="gap-1.5 rounded-xl border-border hover:bg-accent font-semibold w-full sm:w-auto"
-                        size="sm"
-                      >
-                        <span>Visit Official Site</span>
-                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+                  <span>Compare on Skyscanner</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Footer Guarantee */}
           <div className="pt-2 text-center">
             <p className="text-[11px] text-muted-foreground">
-              FlightIQ never charges booking fees or adds markups. Fares are subject to airline availability.
+              FlightIQ never charges booking fees or adds markups. Fares are subject to airline
+              availability.
             </p>
           </div>
         </div>
