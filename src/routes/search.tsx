@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { FlightCard } from "@/components/flight-card";
@@ -33,6 +33,8 @@ import {
   AlertCircle,
   RefreshCw,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -266,6 +268,63 @@ function SearchPage() {
       return scoreA - scoreB;
     });
   }, [filteredOffers, activeSort]);
+
+  // ─── Pagination State & Calculations ──────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+  const resultsTopRef = useRef<HTMLDivElement>(null);
+
+  // Automatically reset to page 1 whenever filters or sort criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, activeSort]);
+
+  const totalOffersCount = sortedOffers.length;
+  const totalPages = Math.max(1, Math.ceil(totalOffersCount / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalOffersCount);
+
+  const paginatedOffers = useMemo(() => {
+    return sortedOffers.slice(startIndex, endIndex);
+  }, [sortedOffers, startIndex, endIndex]);
+
+  function handlePageChange(page: number) {
+    const target = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(target);
+    resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Generates smart page numbers with ellipsis (e.g. [1, 2, 3, '...', 10])
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (safeCurrentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+    if (safeCurrentPage >= totalPages - 3) {
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+    return [
+      1,
+      "...",
+      safeCurrentPage - 1,
+      safeCurrentPage,
+      safeCurrentPage + 1,
+      "...",
+      totalPages,
+    ];
+  }, [safeCurrentPage, totalPages]);
 
   function handleResetFilters() {
     setSelectedStops("all");
@@ -857,18 +916,24 @@ function SearchPage() {
           </Drawer>
 
           {/* Results Column */}
-          <div>
+          <div ref={resultsTopRef} className="scroll-mt-24">
             {/* Sort Header Tabs */}
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {isLoading
                     ? "Searching live fares…"
-                    : `${sortedOffers.length} ${sortedOffers.length === 1 ? "flight deal" : "flight deals"} available`}
+                    : totalOffersCount === 0
+                    ? "0 flight deals"
+                    : filteredOffers.length !== offers.length
+                    ? `${filteredOffers.length} of ${offers.length} flight deals (Page ${safeCurrentPage} of ${totalPages})`
+                    : `${totalOffersCount} ${totalOffersCount === 1 ? "flight deal" : "flight deals"} available (Page ${safeCurrentPage} of ${totalPages})`}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isLoading
                     ? "Checking airlines and prices in real time."
+                    : totalOffersCount > 0
+                    ? `Showing ${startIndex + 1}–${endIndex} of ${totalOffersCount} fares. Taxes and fees included.`
                     : "All fares include taxes and airline booking fees. Real-time partner pricing."}
                 </p>
               </div>
@@ -997,15 +1062,98 @@ function SearchPage() {
             ) : (
               // ── Results ────────────────────────────────────────────────
               <div className="space-y-4">
-                {sortedOffers.map((offer) => (
-                  <FlightCard
-                    key={offer.id}
-                    offer={offer}
-                    searchParams={searchParams}
-                    currency={currency}
-                    onTrackPrice={handleTrackPrice}
-                  />
-                ))}
+                <div className="space-y-4">
+                  {paginatedOffers.map((offer) => (
+                    <FlightCard
+                      key={offer.id}
+                      offer={offer}
+                      searchParams={searchParams}
+                      currency={currency}
+                      onTrackPrice={handleTrackPrice}
+                    />
+                  ))}
+                </div>
+
+                {/* Professional Pagination Bar */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card/40 p-4 backdrop-blur-sm sm:flex-row shadow-xs">
+                    {/* Left: Range indicator & Per page selector */}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>
+                        Showing <span className="font-semibold text-foreground">{startIndex + 1}–{endIndex}</span> of{" "}
+                        <span className="font-semibold text-foreground">{totalOffersCount}</span> flights
+                      </span>
+                      <span className="hidden sm:inline">·</span>
+                      <div className="hidden items-center gap-1.5 sm:flex">
+                        <span>Per page:</span>
+                        <select
+                          value={pageSize}
+                          onChange={(e) => {
+                            setPageSize(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="rounded-lg border border-input bg-background/80 px-2 py-1 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value={10}>10</option>
+                          <option value={15}>15</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Right: Page Navigation Controls */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(safeCurrentPage - 1)}
+                        disabled={safeCurrentPage <= 1}
+                        className="h-8 gap-1 px-2.5 text-xs transition-all disabled:opacity-40"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Prev</span>
+                      </Button>
+
+                      {pageNumbers.map((p, idx) =>
+                        p === "..." ? (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="flex h-8 w-8 items-center justify-center text-xs text-muted-foreground select-none"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <Button
+                            key={`page-${p}`}
+                            variant={p === safeCurrentPage ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => handlePageChange(p as number)}
+                            className={cn(
+                              "h-8 min-w-[2rem] px-2 text-xs font-medium transition-all",
+                              p === safeCurrentPage
+                                ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                : "hover:bg-accent text-foreground",
+                            )}
+                          >
+                            {p}
+                          </Button>
+                        ),
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(safeCurrentPage + 1)}
+                        disabled={safeCurrentPage >= totalPages}
+                        className="h-8 gap-1 px-2.5 text-xs transition-all disabled:opacity-40"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
