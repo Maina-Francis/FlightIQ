@@ -156,7 +156,7 @@ function Index() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            Live fare tracking across 30+ airports
+            Live fare tracking across airports worldwide
           </div>
 
           <h1 className="font-display text-5xl font-bold tracking-tighter text-foreground sm:text-6xl lg:text-7xl lg:leading-[0.95]">

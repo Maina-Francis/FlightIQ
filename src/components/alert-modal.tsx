@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice, getCurrency } from "@/lib/currency";
-import { findAirport } from "@/lib/airports";
+import { findAirport, registerAirport } from "@/lib/airports";
+import { getAirportByIataFn } from "@/lib/airports.functions";
 import { trackPriceAlertCreated } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -66,12 +67,33 @@ export function AlertModal({
   const [userId, setUserId] = useState<string | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
 
+  const [, setAirportTick] = useState(0);
   const originAirport = findAirport(origin);
   const destAirport = findAirport(destination);
 
   useEffect(() => {
     if (open) {
       setSuccess(false);
+      if (origin && !findAirport(origin)) {
+        getAirportByIataFn({ data: { iata: origin } })
+          .then((a) => {
+            if (a) {
+              registerAirport(a);
+              setAirportTick((t) => t + 1);
+            }
+          })
+          .catch(() => {});
+      }
+      if (destination && !findAirport(destination)) {
+        getAirportByIataFn({ data: { iata: destination } })
+          .then((a) => {
+            if (a) {
+              registerAirport(a);
+              setAirportTick((t) => t + 1);
+            }
+          })
+          .catch(() => {});
+      }
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user?.email) {
           setEmail(session.user.email);
@@ -86,7 +108,7 @@ export function AlertModal({
       const suggested = Math.round(currentPriceInCurrency * 0.9);
       setTargetPrice(String(suggested));
     }
-  }, [open, currentPriceInCurrency]);
+  }, [open, origin, destination, currentPriceInCurrency]);
 
   async function handleGoogleSignIn() {
     await supabase.auth.signInWithOAuth({

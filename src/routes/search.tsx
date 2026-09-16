@@ -14,7 +14,8 @@ import { searchFlights } from "@/lib/flights.functions";
 import { type FlightOffer, type SearchParams } from "@/lib/flights";
 import { useCurrencyStore, useThemeStore } from "@/lib/store";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
-import { findAirport } from "@/lib/airports";
+import { findAirport, registerAirport } from "@/lib/airports";
+import { getAirportByIataFn } from "@/lib/airports.functions";
 import { formatPrice, getCurrency } from "@/lib/currency";
 import {
   ArrowLeft,
@@ -281,6 +282,31 @@ function SearchPage() {
       return next;
     });
   }
+
+  const [, setAirportTick] = useState(0);
+
+  useEffect(() => {
+    if (searchParams.origin && !findAirport(searchParams.origin)) {
+      getAirportByIataFn({ data: { iata: searchParams.origin } })
+        .then((res) => {
+          if (res) {
+            registerAirport(res);
+            setAirportTick((t) => t + 1);
+          }
+        })
+        .catch(() => {});
+    }
+    if (searchParams.destination && !findAirport(searchParams.destination)) {
+      getAirportByIataFn({ data: { iata: searchParams.destination } })
+        .then((res) => {
+          if (res) {
+            registerAirport(res);
+            setAirportTick((t) => t + 1);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [searchParams.origin, searchParams.destination]);
 
   function handleTrackPrice(offer: FlightOffer) {
     setAlertOffer(offer);
