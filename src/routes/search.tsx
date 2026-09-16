@@ -391,7 +391,7 @@ function SearchPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
           {/* Filter Sidebar — Desktop */}
           <aside className="hidden space-y-6 lg:block">
-            <div className="glass-panel sticky top-24 rounded-2xl border border-border/80 p-5 shadow-sm">
+            <div className="glass-panel sticky top-24 max-h-[calc(100vh-7.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border/80 p-5 shadow-sm [scrollbar-gutter:stable] [scrollbar-width:thin]">
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-foreground">
                   <SlidersHorizontal className="h-4 w-4 text-primary" />
