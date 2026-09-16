@@ -61,7 +61,7 @@ export function buildSkyscannerDeepLink(params: DeepLinkParams): string {
 
   // Map departure hour to Skyscanner time window
   if (departureTime) {
-    const timeStr = departureTime.includes("T") ? departureTime.split("T")[1] : departureTime;
+    const timeStr = (departureTime.includes("T") ? departureTime.split("T")[1] : departureTime) || "";
     const hour = parseInt(timeStr.split(":")[0] ?? "0", 10);
 
     if (!isNaN(hour)) {
@@ -147,8 +147,9 @@ const AIRLINE_WEBSITES: Record<string, string> = {
  * Returns the official direct website for an airline, with smart fallbacks.
  */
 export function getAirlineWebsite(carrierCode?: string, airlineName?: string): string {
-  if (carrierCode && AIRLINE_WEBSITES[carrierCode.toUpperCase()]) {
-    return AIRLINE_WEBSITES[carrierCode.toUpperCase()];
+  if (carrierCode) {
+    const site = AIRLINE_WEBSITES[carrierCode.toUpperCase()];
+    if (site) return site;
   }
   if (airlineName) {
     const cleanName = airlineName.toLowerCase().replace(/[^a-z0-9]/g, "");

@@ -1,7 +1,7 @@
 /**
  * airports.ts
  * Dynamic in-memory airport registry for FlightIQ.
- * All airport metadata is fetched dynamically from Duffel API worldwide.
+ * Airport metadata is fetched dynamically from Travelpayouts worldwide.
  */
 
 export type Airport = {

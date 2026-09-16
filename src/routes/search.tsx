@@ -1017,7 +1017,7 @@ function SearchPage() {
                 </Button>
               </div>
             ) : offers.length === 0 ? (
-              // ── Empty: Duffel returned 0 live flights on route ───────────
+              // ── Empty: Travelpayouts returned 0 live flights on route ─────
               <div className="glass-panel rounded-2xl border border-border/80 p-12 text-center shadow-xs">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Plane className="h-6 w-6 rotate-45" />

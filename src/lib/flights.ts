@@ -22,10 +22,20 @@ export type SearchLiveFlightsParams = {
   originIata: string;
   destinationIata: string;
   departureDate: string; // YYYY-MM-DD
-  returnDate?: string | null; // YYYY-MM-DD
+  returnDate?: string | null | undefined; // YYYY-MM-DD
   adults: number;
   cabinClass: "economy" | "premium_economy" | "business" | "first" | "premium";
-  currency?: string;
+  currency?: string | undefined;
+};
+
+export type FlightBookingOption = {
+  providerId: string;
+  providerName: string;
+  providerType?: "ota" | "airline" | "meta";
+  priceUsd: number;
+  deepLink: string;
+  isCarrierDirect?: boolean;
+  isRecommended?: boolean;
 };
 
 export type FlightOffer = {
@@ -33,7 +43,7 @@ export type FlightOffer = {
   airline: string;
   airlineCode: string;
   airlineLogo?: string | null | undefined;
-  /** Base price in USD; converted at render time to the active currency. */
+  /** Base price in USD (lowest available across providers); converted at render time. */
   priceUsd: number;
   /** Typical price for this route in USD, used to show price drops. */
   baselineUsd: number;
@@ -49,6 +59,8 @@ export type FlightOffer = {
   deepLink?: string | undefined;
   departingAt?: string | undefined;
   rawOffer?: any;
+  /** Multi-provider booking options from aggregators & OTAs (e.g. Trip.com, Kiwi, Airline Direct) */
+  bookingOptions?: FlightBookingOption[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

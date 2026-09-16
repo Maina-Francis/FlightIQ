@@ -89,7 +89,7 @@ function AirlineLogo({
 }: {
   code: string;
   name: string;
-  logo?: string | null;
+  logo?: string | null | undefined;
 }) {
   const theme = AIRLINE_THEMES[code] ?? {
     bg: "bg-primary/15",

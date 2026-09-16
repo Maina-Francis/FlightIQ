@@ -1,9 +1,9 @@
 /**
  * flights.functions.ts
- * TanStack Start server function: fetches live flight offers from the Duffel API.
+ * TanStack Start server function: fetches live flight offers from the Travelpayouts (Aviasales) API.
  *
- * If DUFFEL_API_KEY is missing or the request fails, an error is thrown so the UI
- * can notify the user via toast and inline error banners rather than displaying mock data.
+ * If TRAVELPAYOUTS_TOKEN or TRAVELPAYOUTS_MARKER is missing or the request fails,
+ * an error is thrown so the UI can notify the user via toast and inline error banners.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -35,12 +35,12 @@ export type FlightSearchParams = z.infer<typeof searchParamsSchema>;
 export const searchFlights = createServerFn({ method: "GET" })
   .validator((raw: unknown) => searchParamsSchema.parse(raw))
   .handler(async ({ data: params }): Promise<FlightOffer[]> => {
-    const { isDuffelConfigured } = await import("./duffel");
+    const { isTravelpayoutsConfigured } = await import("./travelpayouts");
     const { searchLiveFlights } = await import("./flights.server");
 
-    if (!isDuffelConfigured()) {
+    if (!isTravelpayoutsConfigured()) {
       throw new Error(
-        "Live flight search is unavailable: DUFFEL_API_KEY is not configured in environment variables.",
+        "Live flight search is unavailable: TRAVELPAYOUTS_TOKEN or TRAVELPAYOUTS_MARKER is not configured in environment variables.",
       );
     }
 
@@ -56,11 +56,11 @@ export const searchFlights = createServerFn({ method: "GET" })
         currency: params.currency ?? "USD",
       });
     } catch (err) {
-      console.error("[FlightIQ] Live Duffel flight search failed:", err);
+      console.error("[FlightIQ] Live Travelpayouts flight search failed:", err);
       const message =
         err instanceof Error
           ? err.message
-          : "Unable to retrieve live flight offers from Duffel API.";
+          : "Unable to retrieve live flight offers from Travelpayouts API.";
       throw new Error(message);
     }
   });
