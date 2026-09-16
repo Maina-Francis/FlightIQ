@@ -210,6 +210,8 @@ export async function searchLiveFlights(
       origin: params.originIata,
       destination: params.destinationIata,
       departure_date: params.departureDate,
+      arrival_time: null,
+      departure_time: null,
     },
   ];
 
@@ -218,6 +220,8 @@ export async function searchLiveFlights(
       origin: params.destinationIata,
       destination: params.originIata,
       departure_date: params.returnDate,
+      arrival_time: null,
+      departure_time: null,
     });
   }
 

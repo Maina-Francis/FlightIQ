@@ -49,7 +49,7 @@ export const searchFlights = createServerFn({ method: "GET" })
         originIata: params.origin,
         destinationIata: params.destination,
         departureDate: params.departureDate,
-        returnDate: params.returnDate,
+        returnDate: params.returnDate ?? null,
         adults: params.adults,
         cabinClass:
           params.cabin === "premium" ? "premium_economy" : params.cabin,

@@ -125,7 +125,7 @@ bot.command("track", async (ctx) => {
     ? "any price drop"
     : `${targetPrice!.toLocaleString()}`;
 
-  await ctx.reply(
+  return await ctx.reply(
     `🎉 *Tracker Set!*\n\n` +
     `Monitoring ✈️ *${origin.toUpperCase()}* ➔ *${destination.toUpperCase()}*\n` +
     `We'll notify you on ${isAnyDrop ? "*any price drop*" : `when fares drop below *${priceLabel}*`}.\n\n` +
@@ -166,7 +166,7 @@ bot.command("deals", async (ctx) => {
     return `${i + 1}. ✈️ *${t.origin_iata}* ➔ *${t.destination_iata}* — below ${price}`;
   });
 
-  await ctx.reply(
+  return await ctx.reply(
     `📋 *Your Active Trackers:*\n\n${lines.join("\n")}\n\n` +
     `_Visit [FlightIQ](https://flightIQ.app) to manage your alerts._`,
     { parse_mode: "Markdown" },

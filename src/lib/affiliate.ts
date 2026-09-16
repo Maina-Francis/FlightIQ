@@ -18,7 +18,7 @@ export type DeepLinkInput = {
   cabin?: string;
   cabinClass?: string;
   currency?: string;
-  mediaPartnerId?: string;
+  mediaPartnerId?: string | null | undefined;
 };
 
 function compact(date: string) {
