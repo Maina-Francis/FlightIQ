@@ -123,7 +123,37 @@ export function normalizeDuffelOffers(
     mediaPartnerId,
   });
 
-  const normalized: FlightOffer[] = offers.map((offer, idx) => {
+  // Exclude Duffel Airways (Duffel's synthetic sandbox airline, IATA code "ZZ")
+  const realOffers = offers.filter((offer) => {
+    const ownerName = offer.owner?.name?.toLowerCase() ?? "";
+    const ownerCode = offer.owner?.iata_code?.toUpperCase() ?? "";
+    const outboundSlice = offer.slices?.[0];
+    const firstSegment = outboundSlice?.segments?.[0];
+    const carrierName = (
+      offer.owner?.name ??
+      firstSegment?.marketing_carrier?.name ??
+      firstSegment?.operating_carrier?.name ??
+      ""
+    ).toLowerCase();
+    const carrierCode = (
+      offer.owner?.iata_code ??
+      firstSegment?.marketing_carrier?.iata_code ??
+      firstSegment?.operating_carrier?.iata_code ??
+      ""
+    ).toUpperCase();
+
+    if (
+      carrierCode === "ZZ" ||
+      ownerCode === "ZZ" ||
+      carrierName.includes("duffel") ||
+      ownerName.includes("duffel")
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const normalized: FlightOffer[] = realOffers.map((offer, idx) => {
     const outboundSlice = offer.slices?.[0];
     const segments = outboundSlice?.segments ?? [];
     const firstSegment = segments[0];
