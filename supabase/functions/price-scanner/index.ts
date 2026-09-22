@@ -25,7 +25,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-const ZEPTO_API_KEY = Deno.env.get("ZEPTO_API_KEY");
+// Strip any accidental "Zoho-enczapikey " prefix — the Authorization header
+// builder below adds it. Having it in the env var AND in the header causes a
+// 401 "Invalid API key" error from ZeptoMail.
+const ZEPTO_API_KEY = Deno.env.get("ZEPTO_API_KEY")
+  ?.replace(/^Zoho-enczapikey\s+/i, "").trim() || undefined;
 const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "";
 
 const RATE_LIMIT_HOURS = 24;
@@ -273,8 +277,12 @@ Deno.serve(async (req: Request) => {
         // First scan (lastSeenPrice === null) just records the baseline, no alert.
         if (lastSeenPrice !== null) {
           shouldAlert = cachedPrice < lastSeenPrice;
+          // Show the previous (higher) price as the "target" so the message reads
+          // "dropped from X to Y" rather than showing the same price twice.
+          displayTargetPrice = lastSeenPrice;
         }
-        displayTargetPrice = lastSeenPrice ?? cachedPrice;
+        // If there is no lastSeenPrice yet this is the first scan — displayTargetPrice
+        // remains cachedPrice as initialised above; no alert fires.
       }
 
       if (!shouldAlert) {

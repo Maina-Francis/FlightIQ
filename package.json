@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:flights": "node --experimental-strip-types --experimental-vm-modules tests/travelpayouts.test.ts",
+    "test:telegram": "node scripts/test-telegram.mjs",
+    "test:zepto": "node scripts/test-zepto.mjs",
+    "test:price-scanner": "node scripts/test-price-scanner.mjs",
+    "test:all": "npm run test:flights && npm run test:telegram && npm run test:zepto && npm run test:price-scanner"
   },
   "overrides": {
     "rolldown": "1.2.1"

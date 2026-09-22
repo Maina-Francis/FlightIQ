@@ -86,6 +86,9 @@ async function computePriceDrops(
       .then(({ error }: any) => {
         if (error)
           console.error("[FlightIQ] Cache upsert failed:", error.message);
+      })
+      .catch((err: unknown) => {
+        console.error("[FlightIQ] Cache upsert unhandled rejection:", err);
       });
   } catch (err) {
     console.warn("[FlightIQ] Price drop detection failed:", err);
