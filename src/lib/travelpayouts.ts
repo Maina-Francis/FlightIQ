@@ -47,79 +47,131 @@ export interface AviasalesDataPrice {
 }
 
 /**
- * Fetch flight fares using Aviasales Data API v3 (/aviasales/v3/prices_for_dates).
- * Returns an empty array (instead of throwing) when the route is uncached,
- * the API is unreachable, or a network timeout occurs — allowing the UI to
- * gracefully display the "No live flights found" state.
+ * Fetch flight fares with a 3-tier fallback cascade so FlightIQ always
+ * returns results even when Aviasales' cache has no exact-date hit:
+ *
+ *   Tier 1 — Exact date query    (/v3/prices_for_dates?departure_at=YYYY-MM-DD)
+ *   Tier 2 — Month-level query   (/v3/prices_for_dates?departure_at=YYYY-MM)
+ *   Tier 3 — Latest cached fares (/v2/prices/latest)
+ *
+ * Each tier shares the same AbortController timeout (12 s) and defensive
+ * error handling so the server never crashes on network failures.
  */
 export async function fetchFlightPrices(
   params: DataApiPriceParams,
 ): Promise<AviasalesDataPrice[]> {
-  const url = new URL(
-    "https://api.travelpayouts.com/aviasales/v3/prices_for_dates",
-  );
+  // ── Shared fetch helper with timeout ──────────────────────────────────────
+  const fetchWithTimeout = async (url: URL): Promise<AviasalesDataPrice[]> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12_000);
 
-  url.searchParams.append("origin", params.origin.toUpperCase());
-  url.searchParams.append("destination", params.destination.toUpperCase());
-  url.searchParams.append("departure_at", params.departureDate);
-  if (params.returnDate) {
-    url.searchParams.append("return_at", params.returnDate);
-  }
-  url.searchParams.append("currency", params.currency || "usd");
-  url.searchParams.append("direct", params.direct ? "true" : "false");
-  url.searchParams.append("unique", "false");
-  url.searchParams.append("sorting", "price");
-  url.searchParams.append("limit", "30");
-  url.searchParams.append("token", TRAVELPAYOUTS_TOKEN);
-
-  // Abort the request if it takes longer than 12 seconds
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12_000);
-
-  let response: Response;
-  try {
-    response = await fetch(url.toString(), {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
-  } catch (networkErr) {
-    // Network-level failures (timeout, DNS, unreachable host) — return empty
-    // so the UI shows "No live flights found" instead of crashing.
-    const reason =
-      networkErr instanceof Error ? networkErr.message : String(networkErr);
-    console.warn(
-      `[FlightIQ] Aviasales Data API unreachable (${params.origin}→${params.destination}): ${reason}`,
-    );
-    return [];
-  } finally {
-    clearTimeout(timeoutId);
-  }
-
-  // Non-2xx HTTP responses (e.g. 403 Access Denied, 429 Rate Limit)
-  if (!response.ok) {
-    console.warn(
-      `[FlightIQ] Aviasales Data API returned HTTP ${response.status} for ${params.origin}→${params.destination}`,
-    );
-    return [];
-  }
-
-  let result: { success?: boolean; data?: AviasalesDataPrice[]; error?: string };
-  try {
-    result = (await response.json()) as typeof result;
-  } catch {
-    console.warn("[FlightIQ] Aviasales Data API returned non-JSON body");
-    return [];
-  }
-
-  // The API returns success:false with data:null for uncached routes
-  if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-    if (result.error) {
-      console.warn(`[FlightIQ] Aviasales Data API error: ${result.error}`);
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+    } catch (networkErr) {
+      const reason =
+        networkErr instanceof Error ? networkErr.message : String(networkErr);
+      console.warn(
+        `[FlightIQ] Aviasales API unreachable (${params.origin}→${params.destination}): ${reason}`,
+      );
+      return [];
+    } finally {
+      clearTimeout(timeoutId);
     }
+
+    if (!response.ok) {
+      console.warn(
+        `[FlightIQ] Aviasales API HTTP ${response.status} for ${params.origin}→${params.destination} [${url.pathname}]`,
+      );
+      return [];
+    }
+
+    let result: { success?: boolean; data?: AviasalesDataPrice[]; error?: string };
+    try {
+      result = (await response.json()) as typeof result;
+    } catch {
+      console.warn("[FlightIQ] Aviasales API returned non-JSON body");
+      return [];
+    }
+
+    if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+      if (result.error) {
+        console.warn(`[FlightIQ] Aviasales API error field: ${result.error}`);
+      }
+      return [];
+    }
+
+    return result.data;
+  };
+
+  // ── Tier 1 & 2 builder: /v3/prices_for_dates ─────────────────────────────
+  const queryV3 = (depDate: string, retDate?: string): URL => {
+    const url = new URL(
+      "https://api.travelpayouts.com/aviasales/v3/prices_for_dates",
+    );
+    url.searchParams.append("origin", params.origin.toUpperCase());
+    url.searchParams.append("destination", params.destination.toUpperCase());
+    url.searchParams.append("departure_at", depDate);
+    if (retDate) url.searchParams.append("return_at", retDate);
+    url.searchParams.append("currency", params.currency || "usd");
+    url.searchParams.append("unique", "false");
+    url.searchParams.append("sorting", "price");
+    url.searchParams.append("limit", "30");
+    url.searchParams.append("token", TRAVELPAYOUTS_TOKEN);
+    return url;
+  };
+
+  // ── Tier 3 builder: /v2/prices/latest ─────────────────────────────────────
+  const queryV2Latest = (): URL => {
+    const url = new URL("https://api.travelpayouts.com/v2/prices/latest");
+    url.searchParams.append("origin", params.origin.toUpperCase());
+    url.searchParams.append("destination", params.destination.toUpperCase());
+    url.searchParams.append("currency", params.currency || "usd");
+    // beginning_of_period expects YYYY-MM
+    url.searchParams.append(
+      "beginning_of_period",
+      params.departureDate.slice(0, 7),
+    );
+    url.searchParams.append("period_type", "month");
+    url.searchParams.append("limit", "30");
+    url.searchParams.append("token", TRAVELPAYOUTS_TOKEN);
+    return url;
+  };
+
+  try {
+    // Tier 1: Exact departure date
+    console.log(
+      `[FlightIQ] Tier 1 — exact date: ${params.origin}→${params.destination} on ${params.departureDate}`,
+    );
+    let prices = await fetchWithTimeout(
+      queryV3(params.departureDate, params.returnDate),
+    );
+
+    // Tier 2: Month-level (YYYY-MM) — broader cache window
+    if (prices.length === 0) {
+      const monthStr = params.departureDate.slice(0, 7);
+      console.warn(
+        `[FlightIQ] Tier 2 — month fallback: ${params.origin}→${params.destination} for ${monthStr}`,
+      );
+      prices = await fetchWithTimeout(queryV3(monthStr));
+    }
+
+    // Tier 3: Latest cached route fares (/v2/prices/latest)
+    if (prices.length === 0) {
+      console.warn(
+        `[FlightIQ] Tier 3 — v2/latest fallback: ${params.origin}→${params.destination}`,
+      );
+      prices = await fetchWithTimeout(queryV2Latest());
+    }
+
+    return prices;
+  } catch (err) {
+    console.error("[FlightIQ] fetchFlightPrices cascade failed:", err);
     return [];
   }
-
-  return result.data;
 }
 
 /**
