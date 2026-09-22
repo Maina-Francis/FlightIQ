@@ -8,9 +8,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Clock, Plane, ShieldCheck, Check, Sparkles, Calendar } from "lucide-react";
+import { ExternalLink, Clock, Plane, ShieldCheck, Check, Sparkles, Calendar, Moon, ArrowRight } from "lucide-react";
 import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
-import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
+import {
+  formatFlightDuration,
+  getFlightLayovers,
+  getArrivalDayOffset,
+  type FlightOffer,
+  type SearchParams,
+  type FlightSegment,
+} from "@/lib/flights";
 import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -182,7 +189,7 @@ export function BookingProviderModal({
                 className="gap-1 border-border/80 bg-card/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
               >
                 <Clock className="h-3 w-3 text-primary" />
-                {formatDuration(offer.durationMinutes)}
+                {formatFlightDuration(offer.durationMinutes)}
               </Badge>
 
               <Badge
@@ -214,6 +221,137 @@ export function BookingProviderModal({
               where you can compare Trip.com, Kiwi, eDreams, and official airline fares.
             </DialogDescription>
           </div>
+
+          {/* Itinerary Breakdown — only shown when per-segment data is available */}
+          {(() => {
+            // Normalise raw segment data from Duffel-style or flat array on rawOffer
+            const rawSegs: unknown[] | undefined =
+              offer.rawOffer?.slices?.[0]?.segments ??
+              (Array.isArray(offer.rawOffer?.segments) ? offer.rawOffer.segments : undefined);
+
+            if (!rawSegs || rawSegs.length < 2) return null;
+
+            // Map to FlightSegment — handle both Duffel and generic formats
+            const segments: FlightSegment[] = rawSegs
+              .map((s: any) => ({
+                departureIata:
+                  s.origin?.iata_code ?? s.departure_iata ?? s.departureIata ?? "",
+                arrivalIata:
+                  s.destination?.iata_code ?? s.arrival_iata ?? s.arrivalIata ?? "",
+                departureTime:
+                  s.departing_at ?? s.departure_at ?? s.departureTime ?? "",
+                arrivalTime:
+                  s.arriving_at ?? s.arrival_at ?? s.arrivalTime ?? "",
+                durationMinutes:
+                  s.duration ?? s.durationMinutes ?? undefined,
+                carrierCode:
+                  s.operating_carrier?.iata_code ?? s.airline ?? s.carrierCode ?? undefined,
+              }))
+              .filter((s) => s.departureIata && s.arrivalIata);
+
+            if (segments.length < 2) return null;
+
+            const layovers = getFlightLayovers(segments);
+
+            return (
+              <div className="rounded-xl border border-border/80 bg-card/40 overflow-hidden">
+                <div className="border-b border-border/60 px-4 py-2.5 flex items-center gap-2">
+                  <Plane className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Flight Itinerary</span>
+                  <span className="ml-auto text-[11px] text-muted-foreground">
+                    {segments.length} leg{segments.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="p-3 space-y-1">
+                  {segments.map((seg, idx) => {
+                    const legOffset = getArrivalDayOffset(
+                      seg.departureTime.split("T")[1]?.slice(0, 5) ?? "00:00",
+                      seg.durationMinutes ?? 0,
+                    );
+                    const layover = layovers[idx]; // layover AFTER this leg
+
+                    return (
+                      <div key={idx}>
+                        {/* Leg row */}
+                        <div className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-card/60 transition-colors">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+                            {idx + 1}
+                          </div>
+                          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-foreground">
+                              {seg.departureIata}
+                            </span>
+                            <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="font-mono text-xs font-bold text-foreground">
+                              {seg.arrivalIata}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground shrink-0">
+                            {seg.departureTime && (
+                              <span className="font-mono">
+                                {seg.departureTime.split("T")[1]?.slice(0, 5) ?? ""}
+                              </span>
+                            )}
+                            {seg.durationMinutes ? (
+                              <span className="flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />
+                                {formatFlightDuration(seg.durationMinutes)}
+                              </span>
+                            ) : null}
+                            {legOffset > 0 && (
+                              <span className="rounded bg-amber-500/15 px-1 text-[10px] font-bold text-amber-400">
+                                +{legOffset}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Layover callout between this leg and the next */}
+                        {layover && (
+                          <div
+                            className={cn(
+                              "mx-2 my-1 flex items-center gap-2 rounded-lg border px-3 py-1.5",
+                              layover.isOvernight
+                                ? "border-amber-500/30 bg-amber-500/8"
+                                : "border-blue-500/25 bg-blue-500/8",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                                layover.isOvernight
+                                  ? "bg-amber-500/20 text-amber-400"
+                                  : "bg-blue-500/20 text-blue-400",
+                              )}
+                            >
+                              {layover.isOvernight ? (
+                                <Moon className="h-2.5 w-2.5" />
+                              ) : (
+                                <Clock className="h-2.5 w-2.5" />
+                              )}
+                            </div>
+                            <span
+                              className={cn(
+                                "text-[11px] font-medium",
+                                layover.isOvernight ? "text-amber-300" : "text-blue-300",
+                              )}
+                            >
+                              {layover.isOvernight ? "Overnight layover" : "Layover"} in{" "}
+                              <span className="font-mono font-bold">
+                                {layover.airportCode}
+                              </span>{" "}
+                              — {layover.formattedDuration}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Provider Selection Options */}
           <div className="space-y-3 pt-1">

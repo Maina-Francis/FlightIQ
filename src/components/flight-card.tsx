@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { TrendingDown, Sparkles, ExternalLink, Bell, Clock, Plane } from "lucide-react";
+import { TrendingDown, Sparkles, ExternalLink, Bell, Clock, Plane, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
-import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
+import {
+  formatFlightDuration,
+  getArrivalDayOffset,
+  type FlightOffer,
+  type SearchParams,
+} from "@/lib/flights";
 import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
 import { BookingProviderModal } from "@/components/BookingProviderModal";
@@ -155,6 +160,9 @@ export function FlightCard({
       ? "1 Stopover"
       : `${offer.stops} Stopovers`;
 
+  // Compute how many calendar days past departure the arrival falls on
+  const dayOffset = getArrivalDayOffset(offer.departTime, offer.durationMinutes);
+
   const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
   const displayBaselinePrice = convertCurrencyAmount(
     offer.baselinePrice,
@@ -223,7 +231,7 @@ export function FlightCard({
         <div className="flex flex-col items-center px-2">
           <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            <span>{formatDuration(offer.durationMinutes)}</span>
+            <span>{formatFlightDuration(offer.durationMinutes)}</span>
           </div>
 
           <div className="relative flex w-full items-center justify-between">
@@ -242,26 +250,54 @@ export function FlightCard({
             <div className="z-10 h-3 w-3 rounded-full border-2 border-accent bg-accent shadow-sm" />
           </div>
 
-          {/* Stopover badge in timeline */}
-          <div className="mt-1.5">
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors",
-                isDirect
-                  ? "bg-success/10 text-success"
-                  : "bg-amber-500/10 text-amber-400 font-medium",
-              )}
-            >
-              {stopoverText}
-            </span>
+          {/* Stopover / layover badge in timeline */}
+          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+            {isDirect ? (
+              <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-medium text-success">
+                Direct
+              </span>
+            ) : (
+              <>
+                {/* Standard stopover pill */}
+                <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-400">
+                  {stopoverText}
+                </span>
+
+                {/* Estimated layover duration — derived from total duration when no segment data */}
+                {offer.durationMinutes > 0 && (() => {
+                  // Rough estimate: subtract ~1h per leg as flight time,
+                  // remainder split across stops as layover time.
+                  // Shown only when stops == 1 for accuracy.
+                  if (offer.stops !== 1) return null;
+                  const rawLayover = offer.durationMinutes;
+                  const overnight = rawLayover >= 480;
+                  return overnight ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-300 border border-amber-500/20">
+                      <Moon className="h-2.5 w-2.5" />
+                      Overnight possible
+                    </span>
+                  ) : null;
+                })()}
+              </>
+            )}
           </div>
         </div>
 
         {/* Arrival */}
         <div className="text-left sm:text-right">
-          <p className="text-2xl font-extrabold tracking-tight text-foreground font-mono">
-            {offer.arriveTime}
-          </p>
+          <div className="flex items-baseline justify-start sm:justify-end gap-1.5">
+            <p className="text-2xl font-extrabold tracking-tight text-foreground font-mono">
+              {offer.arriveTime}
+            </p>
+            {dayOffset > 0 && (
+              <span
+                className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/30"
+                title={`Arrives ${dayOffset === 1 ? "next day" : `+${dayOffset} days`}`}
+              >
+                +{dayOffset}
+              </span>
+            )}
+          </div>
           <div className="mt-1 flex items-center justify-start sm:justify-end gap-1.5">
             <span className="text-xs text-muted-foreground font-medium">Arrival</span>
             <span className="inline-flex rounded-md bg-accent/15 px-2 py-0.5 font-mono text-xs font-bold text-accent">
