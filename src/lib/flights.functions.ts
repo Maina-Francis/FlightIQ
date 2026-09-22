@@ -57,6 +57,22 @@ export const searchFlights = createServerFn({ method: "GET" })
       });
     } catch (err) {
       console.error("[FlightIQ] Live Travelpayouts flight search failed:", err);
+
+      // For transient API/network failures, return empty results so the UI can
+      // display the "No live flights found" state cleanly instead of a raw JSON
+      // error payload crashing the page.
+      const isNetworkError =
+        err instanceof Error &&
+        (err.message.includes("fetch failed") ||
+          err.message.includes("Connect Timeout") ||
+          err.message.includes("ECONNREFUSED") ||
+          err.message.includes("ENOTFOUND") ||
+          err.name === "AbortError");
+
+      if (isNetworkError) {
+        return [];
+      }
+
       const message =
         err instanceof Error
           ? err.message
