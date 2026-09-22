@@ -14,6 +14,7 @@
     "test:telegram": "node scripts/test-telegram.mjs",
     "test:zepto": "node scripts/test-zepto.mjs",
     "test:price-scanner": "node scripts/test-price-scanner.mjs",
+    "test:seed-cache": "node scripts/seed-cache.mjs",
     "test:all": "npm run test:flights && npm run test:telegram && npm run test:zepto && npm run test:price-scanner"
   },
   "overrides": {

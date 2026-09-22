@@ -239,6 +239,23 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      // 2b. Skip (and deactivate) trackers whose departure date has already passed
+      // Use UTC date — Supabase Edge Functions run in UTC. Trackers are deactivated
+      // once their departure_date is strictly before today's UTC date.
+      const today = new Date().toISOString().split("T")[0]!;
+      if (record.departure_date < today) {
+        console.log(
+          `[price-scanner] Tracker ${record.id} departure ${record.departure_date} is in the past — deactivating.`,
+        );
+        updatePromises.push(
+          supabase
+            .from("price_trackers")
+            .update({ is_active: false })
+            .eq("id", record.id),
+        );
+        continue;
+      }
+
       const cachedPrice = Number(cache.cheapest_price);
       const targetPrice = record.target_price !== null ? Number(record.target_price) : null;
       const lastSeenPrice = record.last_seen_price !== null ? Number(record.last_seen_price) : null;

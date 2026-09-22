@@ -131,6 +131,22 @@ for (const record of trackers) {
     continue;
   }
 
+  // Guard: skip past departure dates (use local date, not UTC)
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (record.departure_date < today) {
+    console.log(`   🗓️  Departure date ${record.departure_date} is in the PAST — tracker will be auto-deactivated by the scanner.`);
+    skipNoCache++;
+    continue;
+  }
+
+  // Warn about non-numeric chat_id (Telegram requires numeric IDs for DMs)
+  if (record.telegram_chat_id && !/^-?\d+$/.test(record.telegram_chat_id)) {
+    console.log(`   ⚠️  telegram_chat_id "${record.telegram_chat_id}" is NOT a numeric ID.`);
+    console.log(`      Telegram Bot API requires a numeric chat_id for DMs (e.g. 123456789).`);
+    console.log(`      Have the user send /start to @FlightIQBot to generate a valid chat_id.`);
+  }
+
   const cachedPrice = Number(cache.cheapest_price);
   const targetPrice = record.target_price !== null ? Number(record.target_price) : null;
   const lastSeenPrice = record.last_seen_price !== null ? Number(record.last_seen_price) : null;
