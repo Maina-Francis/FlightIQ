@@ -47,7 +47,10 @@ export interface AviasalesDataPrice {
 }
 
 /**
- * Fetch flight fares using Aviasales Data API v3 (/aviasales/v3/prices_for_dates)
+ * Fetch flight fares using Aviasales Data API v3 (/aviasales/v3/prices_for_dates).
+ * Returns an empty array (instead of throwing) when the route is uncached,
+ * the API is unreachable, or a network timeout occurs — allowing the UI to
+ * gracefully display the "No live flights found" state.
  */
 export async function fetchFlightPrices(
   params: DataApiPriceParams,
@@ -69,25 +72,54 @@ export async function fetchFlightPrices(
   url.searchParams.append("limit", "30");
   url.searchParams.append("token", TRAVELPAYOUTS_TOKEN);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  // Abort the request if it takes longer than 12 seconds
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12_000);
 
-  if (!response.ok) {
-    throw new Error(
-      `Aviasales Data API error: ${response.status} ${response.statusText}`,
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+  } catch (networkErr) {
+    // Network-level failures (timeout, DNS, unreachable host) — return empty
+    // so the UI shows "No live flights found" instead of crashing.
+    const reason =
+      networkErr instanceof Error ? networkErr.message : String(networkErr);
+    console.warn(
+      `[FlightIQ] Aviasales Data API unreachable (${params.origin}→${params.destination}): ${reason}`,
     );
+    return [];
+  } finally {
+    clearTimeout(timeoutId);
   }
 
-  const result = (await response.json()) as {
-    success?: boolean;
-    data?: AviasalesDataPrice[];
-    error?: string;
-  };
+  // Non-2xx HTTP responses (e.g. 403 Access Denied, 429 Rate Limit)
+  if (!response.ok) {
+    console.warn(
+      `[FlightIQ] Aviasales Data API returned HTTP ${response.status} for ${params.origin}→${params.destination}`,
+    );
+    return [];
+  }
 
-  return result.data || [];
+  let result: { success?: boolean; data?: AviasalesDataPrice[]; error?: string };
+  try {
+    result = (await response.json()) as typeof result;
+  } catch {
+    console.warn("[FlightIQ] Aviasales Data API returned non-JSON body");
+    return [];
+  }
+
+  // The API returns success:false with data:null for uncached routes
+  if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+    if (result.error) {
+      console.warn(`[FlightIQ] Aviasales Data API error: ${result.error}`);
+    }
+    return [];
+  }
+
+  return result.data;
 }
 
 /**
