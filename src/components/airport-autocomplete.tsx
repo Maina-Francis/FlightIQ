@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { searchAirports, type Airport } from "@/lib/airports";
-import { searchAirportsFn, type AirportSearchResult } from "@/lib/airports.functions";
+import { findAirport, registerAirport, type Airport } from "@/lib/airports";
+import {
+  searchAirportsFn,
+  getAirportByIataFn,
+  type AirportSearchResult,
+} from "@/lib/airports.functions";
 import { cn } from "@/lib/utils";
-import { Plane, X } from "lucide-react";
+import { Plane, X, AlertCircle, Loader2 } from "lucide-react";
 
 type Props = {
   value: string;
@@ -18,10 +22,6 @@ type Result = {
   country: string;
 };
 
-function toResult(a: Airport): Result {
-  return { iata: a.iata, city: a.city, name: a.name, country: a.country };
-}
-
 export function AirportAutocomplete({
   value,
   onChange,
@@ -33,31 +33,47 @@ export function AirportAutocomplete({
   const [results, setResults] = useState<Result[]>([]);
   const [highlight, setHighlight] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [, setTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const performSearch = useCallback(async (q: string) => {
-    const local = searchAirports(q, 8).map(toResult);
-    setResults(local);
-    setHighlight(0);
+  // If a value is provided but not in the local airport registry yet, resolve it via API
+  useEffect(() => {
+    if (value && !findAirport(value)) {
+      getAirportByIataFn({ data: { iata: value } })
+        .then((remote) => {
+          if (remote) {
+            registerAirport(remote);
+            setTick((t) => t + 1);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [value]);
 
-    if (!q.trim()) return;
+  const performSearch = useCallback(async (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) {
+      setResults([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
-      const remote = await searchAirportsFn({ data: { query: q } });
-      const seen = new Set(local.map((r) => r.iata));
-      const merged = [...local];
+      const remote = await searchAirportsFn({ data: { query: trimmed } });
       for (const r of remote) {
-        if (r.iata && !seen.has(r.iata)) {
-          merged.push(r);
-          seen.add(r.iata);
-        }
+        registerAirport(r);
       }
-      setResults(merged.slice(0, 12));
+      setResults(remote);
       setHighlight(0);
-    } catch {
-      // keep local results on error
+    } catch (err: any) {
+      console.error("[FlightIQ] Airport search error:", err);
+      setError(err?.message || "Unable to search airports. Please try again.");
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -84,8 +100,10 @@ export function AirportAutocomplete({
   }, []);
 
   function selectAirport(airport: Result) {
+    registerAirport(airport);
     onChange(airport.iata);
     setQuery("");
+    setError(null);
     setOpen(false);
   }
 
@@ -110,6 +128,8 @@ export function AirportAutocomplete({
     }
   }
 
+  const selectedAirport = value ? findAirport(value) : undefined;
+
   return (
     <div ref={containerRef} className="relative w-full">
       {label && (
@@ -122,15 +142,19 @@ export function AirportAutocomplete({
               {value}
             </span>
             <span className="text-sm text-muted-foreground">
-              {searchAirports(value, 1)[0]?.city ?? ""}
+              {selectedAirport?.city ?? ""}
             </span>
           </div>
           <button
+            type="button"
             onClick={() => {
               onChange("");
+              setQuery("");
+              setError(null);
               setOpen(true);
             }}
             className="text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Clear selected airport"
           >
             <X className="h-4 w-4" />
           </button>
@@ -151,14 +175,31 @@ export function AirportAutocomplete({
       )}
       {open && !value && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
-          {results.length === 0 && !loading ? (
+          {error ? (
+            <div className="flex items-center gap-2.5 px-3 py-4 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : !query.trim() ? (
+            <div className="px-4 py-5 text-center text-xs text-muted-foreground">
+              <Plane className="mx-auto mb-2 h-5 w-5 opacity-40" />
+              <p className="font-medium text-foreground">Type a city, airport, or 3-letter code</p>
+              <p className="mt-0.5 text-muted-foreground">e.g. Kigali, London, Nairobi, JFK, DXB</p>
+            </div>
+          ) : loading && results.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Searching airports worldwide...</span>
+            </div>
+          ) : results.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-              No airports found
+              No airports found for &ldquo;{query}&rdquo;
             </div>
           ) : (
             <>
               {results.map((airport, i) => (
                 <button
+                  type="button"
                   key={`${airport.iata}-${i}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -184,8 +225,9 @@ export function AirportAutocomplete({
                 </button>
               ))}
               {loading && (
-                <div className="px-3 py-2 text-center text-xs text-muted-foreground">
-                  Searching more airports...
+                <div className="flex items-center justify-center gap-1.5 border-t border-border/50 px-3 py-2 text-center text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Updating results...</span>
                 </div>
               )}
             </>

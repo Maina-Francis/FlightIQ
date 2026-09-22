@@ -2,10 +2,11 @@ import { useState } from "react";
 import { TrendingDown, Sparkles, ExternalLink, Bell, Clock, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice, getCurrency } from "@/lib/currency";
+import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import { formatDuration, type FlightOffer, type SearchParams } from "@/lib/flights";
 import { buildSkyscannerDeepLink } from "@/lib/affiliate";
 import { trackAffiliateClick } from "@/lib/analytics";
+import { BookingProviderModal } from "@/components/BookingProviderModal";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   searchParams: SearchParams;
   currency: string;
   onTrackPrice: (offer: FlightOffer) => void;
+  onBookDeal?: (offer: FlightOffer) => void;
 };
 
 // Airline brand styling helper
@@ -87,7 +89,7 @@ function AirlineLogo({
 }: {
   code: string;
   name: string;
-  logo?: string | null;
+  logo?: string | null | undefined;
 }) {
   const theme = AIRLINE_THEMES[code] ?? {
     bg: "bg-primary/15",
@@ -130,27 +132,20 @@ function AirlineLogo({
   );
 }
 
-export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Props) {
+export function FlightCard({
+  offer,
+  searchParams,
+  currency,
+  onTrackPrice,
+  onBookDeal,
+}: Props) {
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+
   function handleSelectDeal() {
-    const deepLink =
-      offer.skyscanner_link ||
-      offer.deepLink ||
-      buildSkyscannerDeepLink({
-        origin: offer.origin,
-        destination: offer.destination,
-        departureDate: searchParams.departureDate,
-        returnDate: searchParams.returnDate,
-        adults: searchParams.adults,
-        cabin: searchParams.cabin,
-        currency,
-      });
-    trackAffiliateClick({
-      airline: offer.airline,
-      price: offer.priceUsd,
-      currency,
-      skyscanner_deep_link: deepLink,
-    });
-    window.open(deepLink, "_blank", "noopener,noreferrer");
+    if (onBookDeal) {
+      onBookDeal(offer);
+    }
+    setBookingModalOpen(true);
   }
 
   const isDirect = offer.stops === 0;
@@ -160,7 +155,13 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Prop
       ? "1 Stopover"
       : `${offer.stops} Stopovers`;
 
-  const isConvertedFromUsd = currency !== "USD";
+  const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
+  const displayBaselinePrice = convertCurrencyAmount(
+    offer.baselinePrice,
+    offer.currency,
+    currency,
+  );
+  const isConverted = offer.currency !== currency;
 
   return (
     <div className="glass-panel group relative overflow-hidden rounded-2xl border border-border/70 p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-xl sm:p-6">
@@ -275,20 +276,20 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Prop
         <div>
           {offer.dropPercent > 0 && (
             <p className="text-xs text-muted-foreground line-through font-mono">
-              {formatPrice(offer.baselineUsd, currency)}
+              {formatCurrencyAmount(displayBaselinePrice, currency)}
             </p>
           )}
 
           <div className="flex items-baseline gap-1.5">
             <span className="text-4xl font-black tracking-tight text-foreground">
-              {formatPrice(offer.priceUsd, currency)}
+              {formatCurrencyAmount(displayPrice, currency)}
             </span>
             <span className="text-xs font-medium text-muted-foreground">/ pax</span>
           </div>
 
-          {isConvertedFromUsd && (
+          {isConverted && (
             <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-              ~ ${offer.priceUsd.toLocaleString()} USD · No markup
+              ~ {formatCurrencyAmount(offer.price, offer.currency)} · No markup
             </p>
           )}
         </div>
@@ -316,6 +317,14 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice }: Prop
           </Button>
         </div>
       </div>
+
+      <BookingProviderModal
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        offer={offer}
+        searchParams={searchParams}
+        currency={currency}
+      />
     </div>
   );
 }

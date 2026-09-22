@@ -9,7 +9,7 @@ FlightIQ operates on a zero-friction, free-to-use affiliate monetization model. 
 ### Core Engineering Tech Stack
 
 - **Frontend Web App:** TanStack Start (SSR, Client Components) + Tailwind CSS + Shadcn UI + Zustand (Global Currency/Search State).
-- **Backend / Data Engine:** Duffel API Node SDK (`@duffel/api`) handling live flight search and carrier metadata.
+- **Backend / Data Engine:** Travelpayouts (Aviasales Flight Search API) with native multi-provider pricing (OTAs & Airline Direct) and pre-monetized affiliate links.
 - **Database & Auth:** Supabase (PostgreSQL with Row Level Security, Realtime Subscriptions).
 - **Geolocation & Currency:** IP Geolocation API fallback logic + Zustand LocalStorage/Cookie persistence.
 - **Transactional Email:** ZeptoMail API (Zoho) for low-latency HTML price drop alerts.

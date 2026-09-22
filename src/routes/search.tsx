@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { FlightCard } from "@/components/flight-card";
@@ -14,8 +14,9 @@ import { searchFlights } from "@/lib/flights.functions";
 import { type FlightOffer, type SearchParams } from "@/lib/flights";
 import { useCurrencyStore, useThemeStore } from "@/lib/store";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
-import { findAirport } from "@/lib/airports";
-import { formatPrice, getCurrency } from "@/lib/currency";
+import { findAirport, registerAirport } from "@/lib/airports";
+import { getAirportByIataFn } from "@/lib/airports.functions";
+import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import {
   ArrowLeft,
   Filter,
@@ -32,6 +33,8 @@ import {
   AlertCircle,
   RefreshCw,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -179,17 +182,20 @@ function SearchPage() {
     trackPageView("/search");
   }, [hydrateTheme]);
 
-  // Calculate currency-adjusted min & max prices for slider bounds
-  const currencyRate = getCurrency(currency).rate;
+  // Calculate min & max prices in the active display currency.
   const minOfferPrice = useMemo(() => {
     if (offers.length === 0) return 0;
-    return Math.floor(Math.min(...offers.map((o) => o.priceUsd * currencyRate)));
-  }, [offers, currencyRate]);
+    return Math.floor(
+      Math.min(...offers.map((o) => convertCurrencyAmount(o.price, o.currency, currency))),
+    );
+  }, [offers, currency]);
 
   const maxOfferPrice = useMemo(() => {
     if (offers.length === 0) return 1000;
-    return Math.ceil(Math.max(...offers.map((o) => o.priceUsd * currencyRate)));
-  }, [offers, currencyRate]);
+    return Math.ceil(
+      Math.max(...offers.map((o) => convertCurrencyAmount(o.price, o.currency, currency))),
+    );
+  }, [offers, currency]);
 
   useEffect(() => {
     setPriceRange([minOfferPrice, maxOfferPrice]);
@@ -231,40 +237,102 @@ function SearchPage() {
       }
 
       // Filter by Price
-      const convertedPrice = offer.priceUsd * currencyRate;
+      const convertedPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
       if (convertedPrice < priceRange[0] || convertedPrice > priceRange[1]) {
         return false;
       }
 
       return true;
     });
-  }, [offers, selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, currencyRate]);
+  }, [offers, selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, currency]);
 
   // Sorting logic: Cheapest, Fastest, Best Value
   const sortedOffers = useMemo(() => {
     if (filteredOffers.length === 0) return [];
-    const minPrice = Math.min(...filteredOffers.map((o) => o.priceUsd));
+    const minPrice = Math.min(
+      ...filteredOffers.map((o) => convertCurrencyAmount(o.price, o.currency, currency)),
+    );
     const minDuration = Math.min(...filteredOffers.map((o) => o.durationMinutes));
 
     return [...filteredOffers].sort((a, b) => {
       if (activeSort === "cheapest") {
-        return a.priceUsd - b.priceUsd;
+        return (
+          convertCurrencyAmount(a.price, a.currency, currency) -
+          convertCurrencyAmount(b.price, b.currency, currency)
+        );
       }
       if (activeSort === "fastest") {
         return a.durationMinutes - b.durationMinutes;
       }
       // "best_value": Balanced score (price + duration - price drop discount)
       const scoreA =
-        (a.priceUsd / (minPrice || 1)) * 0.6 +
+        (convertCurrencyAmount(a.price, a.currency, currency) / (minPrice || 1)) * 0.6 +
         (a.durationMinutes / (minDuration || 1)) * 0.4 -
         (a.dropPercent / 100) * 0.2;
       const scoreB =
-        (b.priceUsd / (minPrice || 1)) * 0.6 +
+        (convertCurrencyAmount(b.price, b.currency, currency) / (minPrice || 1)) * 0.6 +
         (b.durationMinutes / (minDuration || 1)) * 0.4 -
         (b.dropPercent / 100) * 0.2;
       return scoreA - scoreB;
     });
-  }, [filteredOffers, activeSort]);
+  }, [filteredOffers, activeSort, currency]);
+
+  // ─── Pagination State & Calculations ──────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+  const resultsTopRef = useRef<HTMLDivElement>(null);
+
+  // Automatically reset to page 1 whenever filters or sort criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStops, selectedTimeOfDay, selectedAirlines, priceRange, activeSort]);
+
+  const totalOffersCount = sortedOffers.length;
+  const totalPages = Math.max(1, Math.ceil(totalOffersCount / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalOffersCount);
+
+  const paginatedOffers = useMemo(() => {
+    return sortedOffers.slice(startIndex, endIndex);
+  }, [sortedOffers, startIndex, endIndex]);
+
+  function handlePageChange(page: number) {
+    const target = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(target);
+    resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Generates smart page numbers with ellipsis (e.g. [1, 2, 3, '...', 10])
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (safeCurrentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+    if (safeCurrentPage >= totalPages - 3) {
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+    return [
+      1,
+      "...",
+      safeCurrentPage - 1,
+      safeCurrentPage,
+      safeCurrentPage + 1,
+      "...",
+      totalPages,
+    ];
+  }, [safeCurrentPage, totalPages]);
 
   function handleResetFilters() {
     setSelectedStops("all");
@@ -281,6 +349,31 @@ function SearchPage() {
       return next;
     });
   }
+
+  const [, setAirportTick] = useState(0);
+
+  useEffect(() => {
+    if (searchParams.origin && !findAirport(searchParams.origin)) {
+      getAirportByIataFn({ data: { iata: searchParams.origin } })
+        .then((res) => {
+          if (res) {
+            registerAirport(res);
+            setAirportTick((t) => t + 1);
+          }
+        })
+        .catch(() => {});
+    }
+    if (searchParams.destination && !findAirport(searchParams.destination)) {
+      getAirportByIataFn({ data: { iata: searchParams.destination } })
+        .then((res) => {
+          if (res) {
+            registerAirport(res);
+            setAirportTick((t) => t + 1);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [searchParams.origin, searchParams.destination]);
 
   function handleTrackPrice(offer: FlightOffer) {
     setAlertOffer(offer);
@@ -365,7 +458,7 @@ function SearchPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
           {/* Filter Sidebar — Desktop */}
           <aside className="hidden space-y-6 lg:block">
-            <div className="glass-panel sticky top-24 rounded-2xl border border-border/80 p-5 shadow-sm">
+            <div className="glass-panel sticky top-24 max-h-[calc(100vh-7.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border/80 p-5 shadow-sm [scrollbar-gutter:stable] [scrollbar-width:thin]">
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-foreground">
                   <SlidersHorizontal className="h-4 w-4 text-primary" />
@@ -524,7 +617,7 @@ function SearchPage() {
                       Price Range
                     </Label>
                     <span className="text-xs font-mono font-bold text-foreground">
-                      {formatPrice(priceRange[1] / currencyRate, currency)}
+                      {formatCurrencyAmount(priceRange[1], currency)}
                     </span>
                   </div>
 
@@ -541,8 +634,8 @@ function SearchPage() {
                       className="my-3"
                     />
                     <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
-                      <span>{formatPrice(priceRange[0] / currencyRate, currency)}</span>
-                      <span>{formatPrice(priceRange[1] / currencyRate, currency)}</span>
+                      <span>{formatCurrencyAmount(priceRange[0], currency)}</span>
+                      <span>{formatCurrencyAmount(priceRange[1], currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -756,7 +849,7 @@ function SearchPage() {
                         Price Range
                       </Label>
                       <span className="text-xs font-mono font-bold text-foreground">
-                        {formatPrice(priceRange[1] / currencyRate, currency)}
+                        {formatCurrencyAmount(priceRange[1], currency)}
                       </span>
                     </div>
                     <div className="mt-3.5">
@@ -772,8 +865,8 @@ function SearchPage() {
                         className="my-3"
                       />
                       <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
-                        <span>{formatPrice(priceRange[0] / currencyRate, currency)}</span>
-                        <span>{formatPrice(priceRange[1] / currencyRate, currency)}</span>
+                        <span>{formatCurrencyAmount(priceRange[0], currency)}</span>
+                        <span>{formatCurrencyAmount(priceRange[1], currency)}</span>
                       </div>
                     </div>
                   </div>
@@ -831,18 +924,24 @@ function SearchPage() {
           </Drawer>
 
           {/* Results Column */}
-          <div>
+          <div ref={resultsTopRef} className="scroll-mt-24">
             {/* Sort Header Tabs */}
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {isLoading
                     ? "Searching live fares…"
-                    : `${sortedOffers.length} ${sortedOffers.length === 1 ? "flight deal" : "flight deals"} available`}
+                    : totalOffersCount === 0
+                    ? "0 flight deals"
+                    : filteredOffers.length !== offers.length
+                    ? `${filteredOffers.length} of ${offers.length} flight deals (Page ${safeCurrentPage} of ${totalPages})`
+                    : `${totalOffersCount} ${totalOffersCount === 1 ? "flight deal" : "flight deals"} available (Page ${safeCurrentPage} of ${totalPages})`}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isLoading
                     ? "Checking airlines and prices in real time."
+                    : totalOffersCount > 0
+                    ? `Showing ${startIndex + 1}–${endIndex} of ${totalOffersCount} fares. Taxes and fees included.`
                     : "All fares include taxes and airline booking fees. Real-time partner pricing."}
                 </p>
               </div>
@@ -926,7 +1025,7 @@ function SearchPage() {
                 </Button>
               </div>
             ) : offers.length === 0 ? (
-              // ── Empty: Duffel returned 0 live flights on route ───────────
+              // ── Empty: Travelpayouts returned 0 live flights on route ─────
               <div className="glass-panel rounded-2xl border border-border/80 p-12 text-center shadow-xs">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Plane className="h-6 w-6 rotate-45" />
@@ -971,15 +1070,98 @@ function SearchPage() {
             ) : (
               // ── Results ────────────────────────────────────────────────
               <div className="space-y-4">
-                {sortedOffers.map((offer) => (
-                  <FlightCard
-                    key={offer.id}
-                    offer={offer}
-                    searchParams={searchParams}
-                    currency={currency}
-                    onTrackPrice={handleTrackPrice}
-                  />
-                ))}
+                <div className="space-y-4">
+                  {paginatedOffers.map((offer) => (
+                    <FlightCard
+                      key={offer.id}
+                      offer={offer}
+                      searchParams={searchParams}
+                      currency={currency}
+                      onTrackPrice={handleTrackPrice}
+                    />
+                  ))}
+                </div>
+
+                {/* Professional Pagination Bar */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card/40 p-4 backdrop-blur-sm sm:flex-row shadow-xs">
+                    {/* Left: Range indicator & Per page selector */}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>
+                        Showing <span className="font-semibold text-foreground">{startIndex + 1}–{endIndex}</span> of{" "}
+                        <span className="font-semibold text-foreground">{totalOffersCount}</span> flights
+                      </span>
+                      <span className="hidden sm:inline">·</span>
+                      <div className="hidden items-center gap-1.5 sm:flex">
+                        <span>Per page:</span>
+                        <select
+                          value={pageSize}
+                          onChange={(e) => {
+                            setPageSize(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="rounded-lg border border-input bg-background/80 px-2 py-1 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value={10}>10</option>
+                          <option value={15}>15</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Right: Page Navigation Controls */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(safeCurrentPage - 1)}
+                        disabled={safeCurrentPage <= 1}
+                        className="h-8 gap-1 px-2.5 text-xs transition-all disabled:opacity-40"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Prev</span>
+                      </Button>
+
+                      {pageNumbers.map((p, idx) =>
+                        p === "..." ? (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="flex h-8 w-8 items-center justify-center text-xs text-muted-foreground select-none"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <Button
+                            key={`page-${p}`}
+                            variant={p === safeCurrentPage ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => handlePageChange(p as number)}
+                            className={cn(
+                              "h-8 min-w-[2rem] px-2 text-xs font-medium transition-all",
+                              p === safeCurrentPage
+                                ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                : "hover:bg-accent text-foreground",
+                            )}
+                          >
+                            {p}
+                          </Button>
+                        ),
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(safeCurrentPage + 1)}
+                        disabled={safeCurrentPage >= totalPages}
+                        className="h-8 gap-1 px-2.5 text-xs transition-all disabled:opacity-40"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -996,7 +1178,7 @@ function SearchPage() {
           departureDate={searchParams.departureDate}
           returnDate={searchParams.returnDate}
           currency={currency}
-          currentPriceUsd={alertOffer.priceUsd}
+          currentPrice={convertCurrencyAmount(alertOffer.price, alertOffer.currency, currency)}
         />
       )}
     </div>

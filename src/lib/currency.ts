@@ -57,14 +57,26 @@ export function getCurrency(code: string): CurrencyInfo {
   return CURRENCIES[code] ?? CURRENCIES[DEFAULT_CURRENCY]!;
 }
 
-/** Convert a USD base amount into the active currency and format it. */
-export function formatPrice(usdAmount: number, code: string): string {
+/** Format an amount that is already denominated in the supplied currency. */
+export function formatCurrencyAmount(amount: number, code: string): string {
   const currency = getCurrency(code);
-  const value = usdAmount * currency.rate;
+  const value = amount;
   const decimals = value >= 1000 ? 0 : value >= 100 ? 0 : 2;
   const formatted = value.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
   return `${currency.symbol}${currency.symbol.length > 1 ? " " : ""}${formatted}`;
+}
+
+/** Convert between supported currencies via the stored USD-relative display rates. */
+export function convertCurrencyAmount(amount: number, fromCode: string, toCode: string): number {
+  const from = getCurrency(fromCode);
+  const to = getCurrency(toCode);
+  return (amount / from.rate) * to.rate;
+}
+
+/** Convert a USD base amount into the active currency and format it. */
+export function formatPrice(usdAmount: number, code: string): string {
+  return formatCurrencyAmount(usdAmount * getCurrency(code).rate, code);
 }

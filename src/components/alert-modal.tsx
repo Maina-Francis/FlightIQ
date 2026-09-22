@@ -22,8 +22,9 @@ import {
   LogIn,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, getCurrency } from "@/lib/currency";
-import { findAirport } from "@/lib/airports";
+import { formatCurrencyAmount } from "@/lib/currency";
+import { findAirport, registerAirport } from "@/lib/airports";
+import { getAirportByIataFn } from "@/lib/airports.functions";
 import { trackPriceAlertCreated } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -38,7 +39,7 @@ type Props = {
   departureDate: string;
   returnDate?: string | null | undefined;
   currency: string;
-  currentPriceUsd: number;
+  currentPrice: number;
 };
 
 type Channel = "email" | "telegram";
@@ -51,10 +52,9 @@ export function AlertModal({
   departureDate,
   returnDate,
   currency,
-  currentPriceUsd,
+  currentPrice,
 }: Props) {
-  const currencyRate = getCurrency(currency).rate;
-  const currentPriceInCurrency = Math.round(currentPriceUsd * currencyRate);
+  const currentPriceInCurrency = Math.round(currentPrice);
 
   const [targetPrice, setTargetPrice] = useState<string>("");
   const [alertOnAnyDrop, setAlertOnAnyDrop] = useState<boolean>(false);
@@ -66,12 +66,33 @@ export function AlertModal({
   const [userId, setUserId] = useState<string | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
 
+  const [, setAirportTick] = useState(0);
   const originAirport = findAirport(origin);
   const destAirport = findAirport(destination);
 
   useEffect(() => {
     if (open) {
       setSuccess(false);
+      if (origin && !findAirport(origin)) {
+        getAirportByIataFn({ data: { iata: origin } })
+          .then((a) => {
+            if (a) {
+              registerAirport(a);
+              setAirportTick((t) => t + 1);
+            }
+          })
+          .catch(() => {});
+      }
+      if (destination && !findAirport(destination)) {
+        getAirportByIataFn({ data: { iata: destination } })
+          .then((a) => {
+            if (a) {
+              registerAirport(a);
+              setAirportTick((t) => t + 1);
+            }
+          })
+          .catch(() => {});
+      }
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user?.email) {
           setEmail(session.user.email);
@@ -86,7 +107,7 @@ export function AlertModal({
       const suggested = Math.round(currentPriceInCurrency * 0.9);
       setTargetPrice(String(suggested));
     }
-  }, [open, currentPriceInCurrency]);
+  }, [open, origin, destination, currentPriceInCurrency]);
 
   async function handleGoogleSignIn() {
     await supabase.auth.signInWithOAuth({
@@ -151,7 +172,7 @@ export function AlertModal({
 
       trackPriceAlertCreated({
         route: `${origin} → ${destination}`,
-        target_price: Math.round(finalTargetPrice / currencyRate),
+        target_price: Math.round(finalTargetPrice),
         channel,
       });
 
@@ -193,8 +214,8 @@ export function AlertModal({
                 Monitoring {origin} → {destination} for price drops below{" "}
                 <span className="font-semibold text-foreground">
                   {alertOnAnyDrop
-                    ? formatPrice(currentPriceInCurrency / currencyRate, currency)
-                    : formatPrice(Number(targetPrice) / currencyRate, currency)}
+                    ? formatCurrencyAmount(currentPriceInCurrency, currency)
+                    : formatCurrencyAmount(Number(targetPrice), currency)}
                 </span>
                 .
               </p>
@@ -237,7 +258,7 @@ export function AlertModal({
                   </span>
                 </div>
                 <span className="font-mono font-bold text-primary">
-                  {formatPrice(currentPriceUsd, currency)}
+                  {formatCurrencyAmount(currentPrice, currency)}
                 </span>
               </div>
               <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -254,7 +275,7 @@ export function AlertModal({
                   Target Price ({currency})
                 </Label>
                 <span className="text-[11px] text-muted-foreground">
-                  Current: {formatPrice(currentPriceUsd, currency)}
+                  Current: {formatCurrencyAmount(currentPrice, currency)}
                 </span>
               </div>
 
