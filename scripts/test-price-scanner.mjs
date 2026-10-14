@@ -58,8 +58,8 @@ if (!SUPABASE_URL) {
 if (!SERVICE_KEY) {
   console.error(
     "❌ FATAL: SUPABASE_SERVICE_ROLE_KEY is not set.\n" +
-    "   Get it from: https://supabase.com/dashboard/project/_/settings/api\n" +
-    "   Then add it to .env: SUPABASE_SERVICE_ROLE_KEY=<value>"
+      "   Get it from: https://supabase.com/dashboard/project/_/settings/api\n" +
+      "   Then add it to .env: SUPABASE_SERVICE_ROLE_KEY=<value>",
   );
   process.exit(1);
 }
@@ -68,9 +68,10 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
 
-console.log(DRY_RUN
-  ? "🔍 [DRY RUN] Running price-scanner simulation (no alerts will be sent)."
-  : "🚀 [LIVE RUN] Running price-scanner — alerts WILL be dispatched!"
+console.log(
+  DRY_RUN
+    ? "🔍 [DRY RUN] Running price-scanner simulation (no alerts will be sent)."
+    : "🚀 [LIVE RUN] Running price-scanner — alerts WILL be dispatched!",
 );
 console.log("");
 
@@ -89,15 +90,17 @@ if (!trackers || trackers.length === 0) {
   console.log("📭 No active price trackers found in the database.");
   console.log(
     "   Tip: Create a tracker via the Telegram bot (/track NBO CPT 50000)\n" +
-    "        or via the FlightIQ web UI."
+      "        or via the FlightIQ web UI.",
   );
   process.exit(0);
 }
 
 console.log(`📋 Found ${trackers.length} active tracker(s):\n`);
 for (const t of trackers) {
-  console.log(`   [${t.id.slice(0, 8)}] ${t.origin_iata} → ${t.destination_iata}` +
-    ` | target: ${t.target_price ?? "any drop"} | chat: ${t.telegram_chat_id ?? "—"} | email: ${t.email ?? "—"}`);
+  console.log(
+    `   [${t.id.slice(0, 8)}] ${t.origin_iata} → ${t.destination_iata}` +
+      ` | target: ${t.target_price ?? "any drop"} | chat: ${t.telegram_chat_id ?? "—"} | email: ${t.email ?? "—"}`,
+  );
 }
 console.log("");
 
@@ -113,7 +116,9 @@ for (const record of trackers) {
   const legacyKey = `${record.origin_iata}-${record.destination_iata}-${record.departure_date}`;
 
   console.log(`──────────────────────────────────────────────`);
-  console.log(`🔎 Tracker [${record.id.slice(0, 8)}]: ${record.origin_iata} → ${record.destination_iata} on ${record.departure_date}`);
+  console.log(
+    `🔎 Tracker [${record.id.slice(0, 8)}]: ${record.origin_iata} → ${record.destination_iata} on ${record.departure_date}`,
+  );
 
   // Check cache
   const { data: cache } = await supabase
@@ -135,7 +140,9 @@ for (const record of trackers) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (record.departure_date < today) {
-    console.log(`   🗓️  Departure date ${record.departure_date} is in the PAST — tracker will be auto-deactivated by the scanner.`);
+    console.log(
+      `   🗓️  Departure date ${record.departure_date} is in the PAST — tracker will be auto-deactivated by the scanner.`,
+    );
     skipNoCache++;
     continue;
   }
@@ -152,15 +159,23 @@ for (const record of trackers) {
   const lastSeenPrice = record.last_seen_price !== null ? Number(record.last_seen_price) : null;
   const lastNotifiedAt = record.last_notified_at;
 
-  console.log(`   💰 Cached price: ${currency} ${cachedPrice.toLocaleString()} (updated: ${cache.updated_at})`);
-  console.log(`   🎯 Target price: ${targetPrice !== null ? `${currency} ${targetPrice.toLocaleString()}` : "any drop"}`);
-  console.log(`   📌 Last seen price: ${lastSeenPrice !== null ? `${currency} ${lastSeenPrice.toLocaleString()}` : "none (first scan)"}`);
+  console.log(
+    `   💰 Cached price: ${currency} ${cachedPrice.toLocaleString()} (updated: ${cache.updated_at})`,
+  );
+  console.log(
+    `   🎯 Target price: ${targetPrice !== null ? `${currency} ${targetPrice.toLocaleString()}` : "any drop"}`,
+  );
+  console.log(
+    `   📌 Last seen price: ${lastSeenPrice !== null ? `${currency} ${lastSeenPrice.toLocaleString()}` : "none (first scan)"}`,
+  );
 
   // Rate limit check
   if (lastNotifiedAt) {
     const hoursSince = (Date.now() - new Date(lastNotifiedAt).getTime()) / (1000 * 60 * 60);
     if (hoursSince < RATE_LIMIT_HOURS) {
-      console.log(`   ⏳ Rate-limited: last notified ${hoursSince.toFixed(1)}h ago (limit: ${RATE_LIMIT_HOURS}h)`);
+      console.log(
+        `   ⏳ Rate-limited: last notified ${hoursSince.toFixed(1)}h ago (limit: ${RATE_LIMIT_HOURS}h)`,
+      );
       skipRateLimited++;
       continue;
     }
@@ -172,11 +187,15 @@ for (const record of trackers) {
 
   if (targetPrice !== null) {
     shouldAlert = cachedPrice <= targetPrice;
-    console.log(`   📊 Condition (target): ${cachedPrice} <= ${targetPrice} → ${shouldAlert ? "✅ FIRE" : "❌ no"}`);
+    console.log(
+      `   📊 Condition (target): ${cachedPrice} <= ${targetPrice} → ${shouldAlert ? "✅ FIRE" : "❌ no"}`,
+    );
   } else {
     if (lastSeenPrice !== null) {
       shouldAlert = cachedPrice < lastSeenPrice;
-      console.log(`   📊 Condition (any-drop): ${cachedPrice} < ${lastSeenPrice} → ${shouldAlert ? "✅ FIRE" : "❌ no"}`);
+      console.log(
+        `   📊 Condition (any-drop): ${cachedPrice} < ${lastSeenPrice} → ${shouldAlert ? "✅ FIRE" : "❌ no"}`,
+      );
     } else {
       console.log(`   📊 Condition (any-drop): first scan — recording baseline, no alert.`);
     }
@@ -197,13 +216,19 @@ for (const record of trackers) {
 
   console.log(`   🚨 ALERT CONDITION MET!`);
   console.log(`      Route: ${record.origin_iata} → ${record.destination_iata}`);
-  console.log(`      Price: ${alertCurrency} ${cachedPrice.toLocaleString()} (target: ${displayTargetPrice.toLocaleString()})`);
-  console.log(`      Channel(s): ${[record.telegram_chat_id && "Telegram", record.email && "Email"].filter(Boolean).join(", ") || "NONE"}`);
+  console.log(
+    `      Price: ${alertCurrency} ${cachedPrice.toLocaleString()} (target: ${displayTargetPrice.toLocaleString()})`,
+  );
+  console.log(
+    `      Channel(s): ${[record.telegram_chat_id && "Telegram", record.email && "Email"].filter(Boolean).join(", ") || "NONE"}`,
+  );
 
   if (DRY_RUN) {
     console.log(`   🔇 [DRY RUN] Skipping actual dispatch.`);
     if (!record.telegram_chat_id && !record.email) {
-      console.log(`   ⚠️  BUG: This tracker has no notification channel! Add telegram_chat_id or email.`);
+      console.log(
+        `   ⚠️  BUG: This tracker has no notification channel! Add telegram_chat_id or email.`,
+      );
     }
   }
 }
@@ -222,10 +247,14 @@ console.log("");
 
 if (skipNoCache > 0) {
   console.log("💡 TIP: Cache entries are created when users search routes on the app.");
-  console.log("   Run a search for the tracked routes to populate the cache, then re-run this script.");
+  console.log(
+    "   Run a search for the tracked routes to populate the cache, then re-run this script.",
+  );
 }
 if (alertsTriggered > 0 && DRY_RUN) {
-  console.log(`💡 TIP: ${alertsTriggered} alert(s) would fire. Re-run with DRY_RUN=false to send them.`);
+  console.log(
+    `💡 TIP: ${alertsTriggered} alert(s) would fire. Re-run with DRY_RUN=false to send them.`,
+  );
 }
 if (alertsTriggered === 0 && skipNoCache === 0) {
   console.log("✅ All trackers evaluated — no price conditions currently met.");

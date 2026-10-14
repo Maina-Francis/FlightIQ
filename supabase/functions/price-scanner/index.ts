@@ -28,8 +28,11 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 // Strip any accidental "Zoho-enczapikey " prefix — the Authorization header
 // builder below adds it. Having it in the env var AND in the header causes a
 // 401 "Invalid API key" error from ZeptoMail.
-const ZEPTO_API_KEY = Deno.env.get("ZEPTO_API_KEY")
-  ?.replace(/^Zoho-enczapikey\s+/i, "").trim() || undefined;
+const ZEPTO_API_KEY =
+  Deno.env
+    .get("ZEPTO_API_KEY")
+    ?.replace(/^Zoho-enczapikey\s+/i, "")
+    .trim() || undefined;
 const SKYSCANNER_PARTNER_ID = Deno.env.get("VITE_SKYSCANNER_PARTNER_ID") ?? "";
 
 const RATE_LIMIT_HOURS = 24;
@@ -97,24 +100,19 @@ async function sendTelegramAlert(opts: {
     `📅 Departure: ${opts.departureDate}`;
 
   const keyboard = {
-    inline_keyboard: [
-      [{ text: "🔗 Book on Skyscanner", url: opts.skyscannerLink }],
-    ],
+    inline_keyboard: [[{ text: "🔗 Book on Skyscanner", url: opts.skyscannerLink }]],
   };
 
-  const res = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: opts.chatId,
-        text,
-        parse_mode: "Markdown",
-        reply_markup: keyboard,
-      }),
-    },
-  );
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: opts.chatId,
+      text,
+      parse_mode: "Markdown",
+      reply_markup: keyboard,
+    }),
+  });
 
   if (!res.ok) {
     const body = await res.text();
@@ -200,18 +198,18 @@ Deno.serve(async (req: Request) => {
 
     if (trackersError) {
       console.error("[price-scanner] Failed to fetch trackers:", trackersError.message);
-      return new Response(
-        JSON.stringify({ error: trackersError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: trackersError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!trackers || trackers.length === 0) {
       console.log("[price-scanner] No active trackers found.");
-      return new Response(
-        JSON.stringify({ scanned: 0, alerted: 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ scanned: 0, alerted: 0 }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log(`[price-scanner] Found ${trackers.length} active tracker(s).`);
@@ -248,10 +246,7 @@ Deno.serve(async (req: Request) => {
           `[price-scanner] Tracker ${record.id} departure ${record.departure_date} is in the past — deactivating.`,
         );
         updatePromises.push(
-          supabase
-            .from("price_trackers")
-            .update({ is_active: false })
-            .eq("id", record.id),
+          supabase.from("price_trackers").update({ is_active: false }).eq("id", record.id),
         );
         continue;
       }

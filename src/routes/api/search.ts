@@ -138,8 +138,7 @@ export const APIRoute = createAPIFileRoute("/api/search")({
       console.error("[FlightIQ] /api/search failed:", err);
       return jsonResponse(
         {
-          error:
-            err instanceof Error ? err.message : "Unable to retrieve flight deals.",
+          error: err instanceof Error ? err.message : "Unable to retrieve flight deals.",
         },
         { status: 502 },
       );

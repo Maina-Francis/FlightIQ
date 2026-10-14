@@ -95,7 +95,7 @@ function DealsPage() {
       } else if (data) {
         setTrackers(data as PriceTrackerRow[]);
         const iatas = new Set<string>();
-        data.forEach((t: any) => {
+        data.forEach((t: { origin_iata?: string; destination_iata?: string }) => {
           if (t.origin_iata && !findAirport(t.origin_iata)) iatas.add(t.origin_iata);
           if (t.destination_iata && !findAirport(t.destination_iata)) iatas.add(t.destination_iata);
         });
@@ -475,14 +475,16 @@ function DealsPage() {
                             <p className="text-lg font-bold text-foreground font-mono">
                               {tracker.currency} {Number(tracker.last_seen_price).toLocaleString()}
                             </p>
-                            {tracker.target_price !== null && Number(tracker.last_seen_price) <= Number(tracker.target_price) ? (
+                            {tracker.target_price !== null &&
+                            Number(tracker.last_seen_price) <= Number(tracker.target_price) ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-success">
                                 <TrendingDown className="h-3 w-3" />
                                 At target!
                               </span>
                             ) : tracker.target_price !== null ? (
                               <span className="text-[10px] text-muted-foreground">
-                                Target: {tracker.currency} {Number(tracker.target_price).toLocaleString()}
+                                Target: {tracker.currency}{" "}
+                                {Number(tracker.target_price).toLocaleString()}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">

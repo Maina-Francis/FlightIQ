@@ -73,9 +73,15 @@ async function fetchLowestFare(origin, destination, depDate, currency) {
       if (!res.ok) continue;
       const json = await res.json();
       if (Array.isArray(json.data) && json.data.length > 0) {
-        return { price: json.data[0].price, currency: safeCur.toUpperCase(), tier: attempts.indexOf(url) + 1 };
+        return {
+          price: json.data[0].price,
+          currency: safeCur.toUpperCase(),
+          tier: attempts.indexOf(url) + 1,
+        };
       }
-    } catch { /* continue */ }
+    } catch {
+      /* continue */
+    }
   }
   return null;
 }
@@ -111,7 +117,9 @@ for (const t of trackers) {
 
   // Skip past departure dates
   if (t.departure_date < today) {
-    console.log(`⏭️  [${t.origin_iata}→${t.destination_iata}] Departure ${t.departure_date} is in the past — deactivating tracker.`);
+    console.log(
+      `⏭️  [${t.origin_iata}→${t.destination_iata}] Departure ${t.departure_date} is in the past — deactivating tracker.`,
+    );
     await supabase.from("price_trackers").update({ is_active: false }).eq("id", t.id);
     skipped++;
     continue;
@@ -125,17 +133,23 @@ for (const t of trackers) {
     .maybeSingle();
 
   if (existing) {
-    console.log(`✅ [${t.origin_iata}→${t.destination_iata}] Already cached: ${currency} ${existing.cheapest_price} (updated: ${existing.updated_at})`);
+    console.log(
+      `✅ [${t.origin_iata}→${t.destination_iata}] Already cached: ${currency} ${existing.cheapest_price} (updated: ${existing.updated_at})`,
+    );
     skipped++;
     continue;
   }
 
   // Fetch from Travelpayouts
-  console.log(`🔍 [${t.origin_iata}→${t.destination_iata}] Fetching fares for ${t.departure_date}...`);
+  console.log(
+    `🔍 [${t.origin_iata}→${t.destination_iata}] Fetching fares for ${t.departure_date}...`,
+  );
   const fare = await fetchLowestFare(t.origin_iata, t.destination_iata, t.departure_date, currency);
 
   if (!fare) {
-    console.log(`   ⚠️  No fares found for ${t.origin_iata}→${t.destination_iata} on ${t.departure_date}.`);
+    console.log(
+      `   ⚠️  No fares found for ${t.origin_iata}→${t.destination_iata} on ${t.departure_date}.`,
+    );
     console.log(`      Note: KES is not supported by Aviasales API — prices returned in USD.`);
     skipped++;
     continue;
@@ -143,15 +157,16 @@ for (const t of trackers) {
 
   const skyscannerLink = `https://www.skyscanner.net/transport/flights/${t.origin_iata.toLowerCase()}/${t.destination_iata.toLowerCase()}/`;
 
-  const { error: upsertErr } = await supabase
-    .from("flight_price_cache")
-    .upsert({
+  const { error: upsertErr } = await supabase.from("flight_price_cache").upsert(
+    {
       route_key: routeKey,
       cheapest_price: fare.price,
       currency: fare.currency,
       skyscanner_link: skyscannerLink,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "route_key" });
+    },
+    { onConflict: "route_key" },
+  );
 
   if (upsertErr) {
     console.log(`   ❌ Upsert failed: ${upsertErr.message}`);
@@ -163,5 +178,7 @@ for (const t of trackers) {
 
 console.log(`\n📊 Done: ${seeded} route(s) seeded, ${skipped} skipped/deactivated.`);
 if (seeded > 0) {
-  console.log(`\n💡 Now run: npm run test:price-scanner\n   to verify the scanner can read the newly cached prices.`);
+  console.log(
+    `\n💡 Now run: npm run test:price-scanner\n   to verify the scanner can read the newly cached prices.`,
+  );
 }

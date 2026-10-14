@@ -40,22 +40,17 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const TEST_CHAT_ID = process.env.TEST_CHAT_ID ?? "";
 
 if (!BOT_TOKEN) {
-  console.error(
-    "❌ FATAL: TELEGRAM_BOT_TOKEN is not set. Add it to .env and retry."
-  );
+  console.error("❌ FATAL: TELEGRAM_BOT_TOKEN is not set. Add it to .env and retry.");
   process.exit(1);
 }
 
 if (!TEST_CHAT_ID) {
-  console.warn(
-    "⚠️  TEST_CHAT_ID is not set. Using getUpdates to find a valid chat ID..."
-  );
+  console.warn("⚠️  TEST_CHAT_ID is not set. Using getUpdates to find a valid chat ID...");
 
   // Try to auto-detect a chat ID from recent bot updates
-  const updRes = await fetch(
-    `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=5`,
-    { method: "GET" }
-  );
+  const updRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=5`, {
+    method: "GET",
+  });
   const updData = await updRes.json();
 
   if (!updRes.ok || !updData.ok) {
@@ -67,14 +62,12 @@ if (!TEST_CHAT_ID) {
   if (!firstUpdate) {
     console.error(
       "❌ No updates found. Send any message to your bot first, then retry.\n" +
-      "   Or set TEST_CHAT_ID=<your_chat_id> and re-run."
+        "   Or set TEST_CHAT_ID=<your_chat_id> and re-run.",
     );
     process.exit(1);
   }
 
-  const chatId =
-    firstUpdate.message?.chat?.id ??
-    firstUpdate.callback_query?.message?.chat?.id;
+  const chatId = firstUpdate.message?.chat?.id ?? firstUpdate.callback_query?.message?.chat?.id;
 
   if (!chatId) {
     console.error("❌ Could not extract chat_id from updates:", JSON.stringify(firstUpdate));
@@ -109,27 +102,22 @@ const text =
   `📅 Departure: ${payload.departureDate}`;
 
 const keyboard = {
-  inline_keyboard: [
-    [{ text: "🔗 Book on Skyscanner", url: payload.skyscannerLink }],
-  ],
+  inline_keyboard: [[{ text: "🔗 Book on Skyscanner", url: payload.skyscannerLink }]],
 };
 
 // ── Send ───────────────────────────────────────────────────────────────────────
 console.log(`[test-telegram] Sending alert to chat_id: ${CHAT_ID}`);
 
-const res = await fetch(
-  `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text,
-      parse_mode: "Markdown",
-      reply_markup: keyboard,
-    }),
-  }
-);
+const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    chat_id: CHAT_ID,
+    text,
+    parse_mode: "Markdown",
+    reply_markup: keyboard,
+  }),
+});
 
 const responseData = await res.json();
 

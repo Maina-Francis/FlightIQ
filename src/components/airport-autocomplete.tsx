@@ -70,9 +70,11 @@ export function AirportAutocomplete({
       }
       setResults(remote);
       setHighlight(0);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[FlightIQ] Airport search error:", err);
-      setError(err?.message || "Unable to search airports. Please try again.");
+      const msg =
+        err instanceof Error ? err.message : "Unable to search airports. Please try again.";
+      setError(msg);
       setResults([]);
     } finally {
       setLoading(false);
@@ -141,9 +143,7 @@ export function AirportAutocomplete({
             <span className="rounded-md bg-primary/15 px-2 py-0.5 text-sm font-bold text-primary">
               {value}
             </span>
-            <span className="text-sm text-muted-foreground">
-              {selectedAirport?.city ?? ""}
-            </span>
+            <span className="text-sm text-muted-foreground">{selectedAirport?.city ?? ""}</span>
           </div>
           <button
             type="button"

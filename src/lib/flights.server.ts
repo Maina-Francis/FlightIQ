@@ -32,18 +32,36 @@ async function computePriceDrops(
 
   try {
     const routeKeys = [
-      ...new Set(
-        offers.map((o) => `${o.origin}-${o.destination}-${departureDate}-${o.currency}`),
-      ),
+      ...new Set(offers.map((o) => `${o.origin}-${o.destination}-${departureDate}-${o.currency}`)),
     ];
 
-    const { data: cached } = await (supabaseAdmin as any)
+    const { data: cached } = await (
+      supabaseAdmin as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            in: (
+              col: string,
+              vals: string[],
+            ) => Promise<{
+              data?: { route_key: string; cheapest_price: number }[] | null;
+            }>;
+          };
+          upsert: (
+            rows: unknown[],
+            opts: { onConflict: string },
+          ) => Promise<{ error?: { message: string } | null }>;
+        };
+      }
+    )
       .from("flight_price_cache")
       .select("route_key, cheapest_price")
       .in("route_key", routeKeys);
 
     const cachedMap = new Map<string, number>(
-      (cached ?? []).map((r: any) => [r.route_key, r.cheapest_price]),
+      (cached ?? []).map((r: { route_key: string; cheapest_price: number }) => [
+        r.route_key,
+        r.cheapest_price,
+      ]),
     );
 
     const currentCheapest = new Map<string, number>();
@@ -65,9 +83,7 @@ async function computePriceDrops(
       const cachedPrice = cachedMap.get(key);
 
       if (cachedPrice && cachedPrice > currentPrice) {
-        const drop = Math.round(
-          ((cachedPrice - currentPrice) / cachedPrice) * 100,
-        );
+        const drop = Math.round(((cachedPrice - currentPrice) / cachedPrice) * 100);
         if (drop >= 3) dropMap.set(key, drop);
       }
 
@@ -80,12 +96,20 @@ async function computePriceDrops(
       });
     }
 
-    (supabaseAdmin as any)
+    (
+      supabaseAdmin as unknown as {
+        from: (table: string) => {
+          upsert: (
+            rows: unknown[],
+            opts: { onConflict: string },
+          ) => Promise<{ error?: { message: string } | null }>;
+        };
+      }
+    )
       .from("flight_price_cache")
       .upsert(upserts, { onConflict: "route_key" })
-      .then(({ error }: any) => {
-        if (error)
-          console.error("[FlightIQ] Cache upsert failed:", error.message);
+      .then(({ error }: { error?: { message: string } | null }) => {
+        if (error) console.error("[FlightIQ] Cache upsert failed:", error.message);
       })
       .catch((err: unknown) => {
         console.error("[FlightIQ] Cache upsert unhandled rejection:", err);
@@ -103,9 +127,7 @@ async function computePriceDrops(
  * Searches live flight offers using Travelpayouts (Aviasales Data API v3).
  * Returns multi-provider flight offers with verified prices and affiliate deep links.
  */
-export async function searchLiveFlights(
-  params: SearchLiveFlightsParams,
-): Promise<FlightOffer[]> {
+export async function searchLiveFlights(params: SearchLiveFlightsParams): Promise<FlightOffer[]> {
   const responseCurrency = (params.currency || "USD").toUpperCase();
 
   const dataPrices = await fetchFlightPrices({
@@ -131,9 +153,7 @@ export async function searchLiveFlights(
         ? `https://pics.avs.io/al_square/64/64/${carrierCode.toUpperCase()}.png`
         : null;
 
-    const departTime = item.departure_at
-      ? formatIsoTime(item.departure_at)
-      : "--:--";
+    const departTime = item.departure_at ? formatIsoTime(item.departure_at) : "--:--";
     const durationMinutes = item.duration || 0;
 
     let arriveTime = "--:--";

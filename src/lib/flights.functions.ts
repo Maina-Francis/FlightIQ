@@ -51,8 +51,7 @@ export const searchFlights = createServerFn({ method: "GET" })
         departureDate: params.departureDate,
         returnDate: params.returnDate ?? null,
         adults: params.adults,
-        cabinClass:
-          params.cabin === "premium" ? "premium_economy" : params.cabin,
+        cabinClass: params.cabin === "premium" ? "premium_economy" : params.cabin,
         currency: params.currency ?? "USD",
       });
     } catch (err) {

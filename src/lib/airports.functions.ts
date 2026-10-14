@@ -44,9 +44,7 @@ export const searchAirportsFn = createServerFn({ method: "GET" })
         seen.add(iata);
 
         const isCity = place.type === "city";
-        const city = isCity
-          ? place.name
-          : place.city_name || place.name || "";
+        const city = isCity ? place.name : place.city_name || place.name || "";
         const name = isCity ? "All Airports" : place.name || city;
         const country = place.country_name || "";
 
@@ -61,11 +59,12 @@ export const searchAirportsFn = createServerFn({ method: "GET" })
       }
 
       return results;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[FlightIQ] Travelpayouts places search failed:", err);
       const message =
-        err?.message ||
-        "Unable to search airports right now. Please try again.";
+        err instanceof Error
+          ? err.message
+          : "Unable to search airports right now. Please try again.";
       throw new Error(message);
     }
   });
@@ -81,9 +80,7 @@ export const getAirportByIataFn = createServerFn({ method: "GET" })
       if (!match || !match.code) return null;
 
       const isCity = match.type === "city";
-      const city = isCity
-        ? match.name
-        : match.city_name || match.name || "";
+      const city = isCity ? match.name : match.city_name || match.name || "";
       const name = isCity ? "All Airports" : match.name || city;
       const country = match.country_name || "";
 

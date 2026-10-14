@@ -18,9 +18,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const token = process.env["TELEGRAM_BOT_TOKEN"];
 if (!token) {
   // Warn at boot time; the bot simply won't function without a token.
-  console.warn(
-    "[FlightIQ Telegram] TELEGRAM_BOT_TOKEN is not set. Bot will not handle updates.",
-  );
+  console.warn("[FlightIQ Telegram] TELEGRAM_BOT_TOKEN is not set. Bot will not handle updates.");
 }
 
 export const bot = new Bot(token ?? "MISSING_TOKEN");
@@ -35,10 +33,7 @@ bot.command("start", async (ctx) => {
     // Link this Telegram chat to the authenticated Supabase user's profile
     const { error } = await supabaseAdmin
       .from("profiles")
-      .upsert(
-        { id: payload, telegram_chat_id: chatId },
-        { onConflict: "id" },
-      );
+      .upsert({ id: payload, telegram_chat_id: chatId }, { onConflict: "id" });
 
     if (error) {
       console.error("[FlightIQ Telegram] Failed to link account:", error.message);
@@ -57,13 +52,13 @@ bot.command("start", async (ctx) => {
 
   await ctx.reply(
     "✈️ *Welcome to FlightIQ Bot!*\n\n" +
-    "Track flight prices in real-time and get alerted the moment fares drop.\n\n" +
-    "*Commands:*\n" +
-    "• `/track NBO CPT 80000` — Track a route with a target price\n" +
-    "• `/track NBO CPT any` — Alert on any price drop\n" +
-    "• `/deals` — View your active price trackers\n" +
-    "• `/help` — Show all commands\n\n" +
-    "_Visit [FlightIQ](https://flightIQ.app) to set up alerts from your browser._",
+      "Track flight prices in real-time and get alerted the moment fares drop.\n\n" +
+      "*Commands:*\n" +
+      "• `/track NBO CPT 80000` — Track a route with a target price\n" +
+      "• `/track NBO CPT any` — Alert on any price drop\n" +
+      "• `/deals` — View your active price trackers\n" +
+      "• `/help` — Show all commands\n\n" +
+      "_Visit [FlightIQ](https://flightIQ.app) to set up alerts from your browser._",
     { parse_mode: "Markdown" },
   );
 });
@@ -76,11 +71,11 @@ bot.command("track", async (ctx) => {
   if (args.length < 2 || args[0] === "") {
     return ctx.reply(
       "⚠️ *Usage:* `/track <ORIGIN> <DESTINATION> [TARGET_PRICE]`\n\n" +
-      "_Examples:_\n" +
-      "• `/track NBO CPT 85000` — alert when fare drops below 85,000\n" +
-      "• `/track NBO CPT any` — alert on any price drop\n\n" +
-      "• Origin & destination are IATA airport codes (3 letters)\n" +
-      "• Target price is in your local currency",
+        "_Examples:_\n" +
+        "• `/track NBO CPT 85000` — alert when fare drops below 85,000\n" +
+        "• `/track NBO CPT any` — alert on any price drop\n\n" +
+        "• Origin & destination are IATA airport codes (3 letters)\n" +
+        "• Target price is in your local currency",
       { parse_mode: "Markdown" },
     );
   }
@@ -94,7 +89,7 @@ bot.command("track", async (ctx) => {
   if (!origin || !destination || (!isAnyDrop && (isNaN(targetPrice!) || targetPrice! <= 0))) {
     return ctx.reply(
       "❌ Invalid arguments. Please provide valid IATA codes and a positive target price (or 'any').\n\n" +
-      "_Example:_ `/track NBO CPT 85000` or `/track NBO CPT any`",
+        "_Example:_ `/track NBO CPT 85000` or `/track NBO CPT any`",
       { parse_mode: "Markdown" },
     );
   }
@@ -121,15 +116,13 @@ bot.command("track", async (ctx) => {
     `https://www.skyscanner.net/transport/flights/${origin.toLowerCase()}/${destination.toLowerCase()}/`,
   );
 
-  const priceLabel = isAnyDrop
-    ? "any price drop"
-    : `${targetPrice!.toLocaleString()}`;
+  const priceLabel = isAnyDrop ? "any price drop" : `${targetPrice!.toLocaleString()}`;
 
   return await ctx.reply(
     `🎉 *Tracker Set!*\n\n` +
-    `Monitoring ✈️ *${origin.toUpperCase()}* ➔ *${destination.toUpperCase()}*\n` +
-    `We'll notify you on ${isAnyDrop ? "*any price drop*" : `when fares drop below *${priceLabel}*`}.\n\n` +
-    `_Type /deals to see all your active trackers._`,
+      `Monitoring ✈️ *${origin.toUpperCase()}* ➔ *${destination.toUpperCase()}*\n` +
+      `We'll notify you on ${isAnyDrop ? "*any price drop*" : `when fares drop below *${priceLabel}*`}.\n\n` +
+      `_Type /deals to see all your active trackers._`,
     { parse_mode: "Markdown", reply_markup: keyboard },
   );
 });
@@ -168,7 +161,7 @@ bot.command("deals", async (ctx) => {
 
   return await ctx.reply(
     `📋 *Your Active Trackers:*\n\n${lines.join("\n")}\n\n` +
-    `_Visit [FlightIQ](https://flightIQ.app) to manage your alerts._`,
+      `_Visit [FlightIQ](https://flightIQ.app) to manage your alerts._`,
     { parse_mode: "Markdown" },
   );
 });
@@ -178,12 +171,12 @@ bot.command("deals", async (ctx) => {
 bot.command("help", async (ctx) => {
   await ctx.reply(
     "*FlightIQ Bot Commands:*\n\n" +
-    "• `/start` — Welcome & account setup\n" +
-    "• `/track <ORIGIN> <DEST> <PRICE>` — Set a price alert\n" +
-    "• `/track <ORIGIN> <DEST> any` — Alert on any price drop\n" +
-    "• `/deals` — View your active trackers\n" +
-    "• `/help` — Show this message\n\n" +
-    "_Examples:_ `/track NBO LHR 120000` or `/track NBO LHR any`",
+      "• `/start` — Welcome & account setup\n" +
+      "• `/track <ORIGIN> <DEST> <PRICE>` — Set a price alert\n" +
+      "• `/track <ORIGIN> <DEST> any` — Alert on any price drop\n" +
+      "• `/deals` — View your active trackers\n" +
+      "• `/help` — Show this message\n\n" +
+      "_Examples:_ `/track NBO LHR 120000` or `/track NBO LHR any`",
     { parse_mode: "Markdown" },
   );
 });
@@ -221,24 +214,19 @@ export async function sendPriceDropAlert(payload: PriceDropPayload): Promise<voi
     `📅 Departure: ${payload.departureDate}`;
 
   const keyboard = {
-    inline_keyboard: [
-      [{ text: "🔗 Book on Skyscanner", url: payload.skyscannerLink }],
-    ],
+    inline_keyboard: [[{ text: "🔗 Book on Skyscanner", url: payload.skyscannerLink }]],
   };
 
-  const res = await fetch(
-    `https://api.telegram.org/bot${botToken}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: payload.chatId,
-        text,
-        parse_mode: "Markdown",
-        reply_markup: keyboard,
-      }),
-    },
-  );
+  const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: payload.chatId,
+      text,
+      parse_mode: "Markdown",
+      reply_markup: keyboard,
+    }),
+  });
 
   if (!res.ok) {
     const body = await res.text();

@@ -60,11 +60,10 @@ export type FlightOffer = {
   skyscanner_link?: string | undefined;
   deepLink?: string | undefined;
   departingAt?: string | undefined;
-  rawOffer?: any;
+  rawOffer?: unknown;
   /** Multi-provider booking options from aggregators & OTAs (e.g. Trip.com, Kiwi, Airline Direct) */
   bookingOptions?: FlightBookingOption[];
 };
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,7 +84,6 @@ export function formatIsoTime(isoStr?: string | null): string {
   const timePart = isoStr.split("T")[1] ?? "";
   return timePart.slice(0, 5);
 }
-
 
 /**
  * Formats total minutes into a human-readable duration label.
@@ -179,9 +177,7 @@ export function getFlightLayovers(segments: FlightSegment[]): Layover[] {
 
     if (isNaN(arrDate.getTime()) || isNaN(depDate.getTime())) continue;
 
-    const durationMinutes = Math.round(
-      (depDate.getTime() - arrDate.getTime()) / 60_000,
-    );
+    const durationMinutes = Math.round((depDate.getTime() - arrDate.getTime()) / 60_000);
 
     // Discard negative layovers (data anomaly / clock skew)
     if (durationMinutes < 0) continue;
@@ -213,10 +209,7 @@ export function getFlightLayovers(segments: FlightSegment[]): Layover[] {
  * @param durationMinutes - Total flight duration in minutes
  * @returns 0 for same-day arrival, 1 for next-day, etc.
  */
-export function getArrivalDayOffset(
-  departTimeHHMM: string,
-  durationMinutes: number,
-): number {
+export function getArrivalDayOffset(departTimeHHMM: string, durationMinutes: number): number {
   if (!departTimeHHMM || !durationMinutes) return 0;
   const parts = departTimeHHMM.split(":");
   const depH = parseInt(parts[0] ?? "0", 10);
@@ -225,4 +218,3 @@ export function getArrivalDayOffset(
   const depTotalMins = depH * 60 + depM;
   return Math.floor((depTotalMins + Math.round(durationMinutes)) / 1440);
 }
-

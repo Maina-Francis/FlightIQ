@@ -44,9 +44,7 @@ const TEST_EMAIL = process.env.TEST_EMAIL ?? "alerts-test@flightiq.app";
 const CLEAN_KEY = RAW_ZEPTO_KEY.replace(/^Zoho-enczapikey\s+/i, "").trim();
 
 if (!CLEAN_KEY) {
-  console.error(
-    "❌ FATAL: ZEPTO_API_KEY is not set. Add it to .env and retry."
-  );
+  console.error("❌ FATAL: ZEPTO_API_KEY is not set. Add it to .env and retry.");
   process.exit(1);
 }
 
@@ -59,8 +57,7 @@ const payload = {
   newPrice: 42000,
   targetPrice: 50000,
   departureDate: "2026-10-15",
-  skyscannerLink:
-    "https://www.skyscanner.net/transport/flights/nbo/cpt/261015/",
+  skyscannerLink: "https://www.skyscanner.net/transport/flights/nbo/cpt/261015/",
 };
 
 // ── Email body ────────────────────────────────────────────────────────────────
@@ -86,7 +83,11 @@ const htmlbody = `
 
 // ── Send ──────────────────────────────────────────────────────────────────────
 console.log("[test-zepto] Sending test email to:", TEST_EMAIL);
-console.log("[test-zepto] Key prefix being used: Zoho-enczapikey (key length:", CLEAN_KEY.length, ")");
+console.log(
+  "[test-zepto] Key prefix being used: Zoho-enczapikey (key length:",
+  CLEAN_KEY.length,
+  ")",
+);
 
 const res = await fetch("https://api.zeptomail.com/v1.1/email", {
   method: "POST",
