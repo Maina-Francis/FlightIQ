@@ -18,9 +18,11 @@ import {
   fetchFlightPrices,
   buildAviasalesOfferUrl,
   buildAviasalesPartnerUrl,
+  type AviasalesDataPrice,
 } from "./travelpayouts";
+import { getProviderMeta } from "./booking-providers";
 
-// ─── Price Drop Detection via Supabase Cache ──────────────────────────────────
+// --- Price Drop Detection via Supabase Cache ----------------------------------
 
 async function computePriceDrops(
   offers: { price: number; origin: string; destination: string; currency: string }[],
@@ -127,11 +129,32 @@ async function computePriceDrops(
   return dropMap;
 }
 
-// ─── Live Flight Search Engine (Aviasales Data API v3) ─────────────────────────
+// --- Flight Grouping Key ------------------------------------------------------
+
+/**
+ * Builds a key that identifies a unique physical flight regardless of which
+ * OTA / gate is selling it.  The Aviasales Data API returns one row per gate
+ * for the same departure, so we group them to show a single card with all
+ * booking options.
+ */
+function flightGroupKey(item: AviasalesDataPrice): string {
+  const depMinute = item.departure_at
+    ? item.departure_at.slice(0, 16) // "YYYY-MM-DDTHH:MM"
+    : "unknown";
+  return `${item.airline}-${depMinute}-${item.flight_number}-${item.transfers}`;
+}
+
+// --- Live Flight Search Engine ------------------------------------------------
 
 /**
  * Searches live flight offers using Travelpayouts (Aviasales Data API v3).
- * Returns multi-provider flight offers with verified prices and affiliate deep links.
+ *
+ * Key behaviour:
+ *  - Groups all gate/OTA variants of the same physical flight into ONE card.
+ *  - bookingOptions holds one entry per OTA with its exact API price, giving
+ *    users a single source of truth matching what Aviasales shows.
+ *  - offer.price is always the cheapest gate price found.
+ *  - Each booking option deep-link goes directly to that OTA via affiliate URL.
  */
 export async function searchLiveFlights(params: SearchLiveFlightsParams): Promise<FlightOffer[]> {
   const responseCurrency = (params.currency || "USD").toUpperCase();
@@ -152,27 +175,37 @@ export async function searchLiveFlights(params: SearchLiveFlightsParams): Promis
     adults: params.adults,
   });
 
-  // Ensure airlines database is hydrating in background
   void loadAirlinesDatabase();
 
-  const normalized: FlightOffer[] = dataPrices.map((item, idx) => {
-    const carrierCode = (item.airline || "??").toUpperCase();
+  // Step 1: group all API rows by unique flight
+  const groups = new Map<string, AviasalesDataPrice[]>();
+  for (const item of dataPrices) {
+    const key = flightGroupKey(item);
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+
+  // Step 2: build one FlightOffer per group
+  const normalized: FlightOffer[] = [];
+
+  for (const [groupKey, items] of groups.entries()) {
+    const rep = items[0]!;
+    const carrierCode = (rep.airline || "??").toUpperCase();
     const airlineName = getAirlineName(carrierCode);
     const carrierLogo = carrierCode !== "??" ? getAirlineLogoUrl(carrierCode) : null;
 
-    const departTime = item.departure_at ? formatIsoTime(item.departure_at) : "--:--";
-    const durationMinutes = item.duration || 0;
+    const departTime = rep.departure_at ? formatIsoTime(rep.departure_at) : "--:--";
+    const durationMinutes = rep.duration || 0;
 
     let arriveTime = "--:--";
-    if (item.departure_at) {
-      const depDate = new Date(item.departure_at);
+    if (rep.departure_at) {
+      const depDate = new Date(rep.departure_at);
       if (!isNaN(depDate.getTime())) {
-        const arrDate = new Date(depDate.getTime() + durationMinutes * 60000);
+        const arrDate = new Date(depDate.getTime() + durationMinutes * 60_000);
         arriveTime = arrDate.toISOString().split("T")[1]?.slice(0, 5) ?? "--:--";
       }
     }
-
-    const itemLink = buildAviasalesOfferUrl(item.link, partnerSearchUrl);
 
     const skyscannerLink = buildSkyscannerDeepLink({
       origin: params.originIata,
@@ -183,51 +216,68 @@ export async function searchLiveFlights(params: SearchLiveFlightsParams): Promis
       cabinClass: params.cabinClass,
       currency: params.currency ?? "USD",
       carrierCode: carrierCode !== "??" ? carrierCode : undefined,
-      stops: item.transfers,
-      departureTime: item.departure_at,
+      stops: rep.transfers,
+      departureTime: rep.departure_at,
     });
 
-    const bookingOptions: FlightBookingOption[] = [
-      {
-        providerId: item.gate || `gate-${idx}`,
-        providerName: item.gate || "Aviasales / OTAs",
-        providerType: "ota",
-        price: item.price,
-        currency: responseCurrency,
-        deepLink: itemLink,
-        isRecommended: true,
-      },
-    ];
+    // Build booking options — one per unique gate, cheapest first
+    const seenGates = new Set<string>();
+    const bookingOptions: FlightBookingOption[] = [];
+    const sortedItems = [...items].sort((a, b) => a.price - b.price);
 
-    return {
-      id: `avs-${carrierCode}-${item.flight_number || idx}`,
+    for (const gateItem of sortedItems) {
+      const gateKey = gateItem.gate ?? `gate-${bookingOptions.length}`;
+      if (seenGates.has(gateKey)) continue;
+      seenGates.add(gateKey);
+
+      const meta = getProviderMeta(gateItem.gate);
+      const gateLink = buildAviasalesOfferUrl(gateItem.link, partnerSearchUrl);
+
+      bookingOptions.push({
+        providerId: gateKey,
+        providerName: meta.name,
+        providerType: meta.isAirlineDirect ? "airline" : "ota",
+        price: gateItem.price,
+        currency: responseCurrency,
+        deepLink: gateLink,
+        isCarrierDirect: meta.isAirlineDirect ?? false,
+        isRecommended: bookingOptions.length === 0,
+      });
+    }
+
+    const cheapestPrice = bookingOptions[0]?.price ?? rep.price;
+    const cheapestLink =
+      bookingOptions[0]?.deepLink ?? buildAviasalesOfferUrl(rep.link, partnerSearchUrl);
+
+    normalized.push({
+      id: `avs-${carrierCode}-${groupKey}`,
       airline: airlineName,
       airlineCode: carrierCode,
       airlineLogo: carrierLogo,
-      price: item.price,
-      baselinePrice: item.price,
+      price: cheapestPrice,
+      baselinePrice: cheapestPrice,
       currency: responseCurrency,
       dropPercent: 0,
       departTime,
       arriveTime,
-      departingAt: item.departure_at,
+      departingAt: rep.departure_at,
       durationMinutes,
-      stops: item.transfers,
+      stops: rep.transfers,
       origin: params.originIata,
       destination: params.destinationIata,
       bestLocalFare: false,
       skyscanner_link: skyscannerLink,
-      deepLink: itemLink,
+      deepLink: cheapestLink,
       bookingOptions,
-      rawOffer: item,
-    };
-  });
+      rawOffer: rep,
+    });
+  }
 
-  // Price drop detection via Supabase cache
+  // Price drop detection
   const dropMap = await computePriceDrops(normalized, params.departureDate);
-
   for (const offer of normalized) {
     const key = `${offer.origin}-${offer.destination}-${params.departureDate}-${offer.currency}`;
+
     const drop = dropMap.get(key) ?? 0;
     offer.dropPercent = drop;
     if (drop > 0) {
