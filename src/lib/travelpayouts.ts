@@ -10,8 +10,7 @@ import crypto from "crypto";
 
 export const TRAVELPAYOUTS_TOKEN: string =
   process.env["TRAVELPAYOUTS_TOKEN"] ?? "b41a17f0393abfee3a24e26b65a2148f";
-export const TRAVELPAYOUTS_MARKER: string =
-  process.env["TRAVELPAYOUTS_MARKER"] ?? "778298";
+export const TRAVELPAYOUTS_MARKER: string = process.env["TRAVELPAYOUTS_MARKER"] ?? "778298";
 
 export function isTravelpayoutsConfigured(): boolean {
   return Boolean(TRAVELPAYOUTS_TOKEN && TRAVELPAYOUTS_MARKER);
@@ -57,11 +56,16 @@ export interface AviasalesDataPrice {
  * Each tier shares the same AbortController timeout (12 s) and defensive
  * error handling so the server never crashes on network failures.
  */
-export async function fetchFlightPrices(
-  params: DataApiPriceParams,
-): Promise<AviasalesDataPrice[]> {
+export async function fetchFlightPrices(params: DataApiPriceParams): Promise<AviasalesDataPrice[]> {
+  const todayStr = new Date().toISOString().split("T")[0]!;
+  // Guard: if requested departure is in the past, adjust to today to avoid 400 rejection
+  let departureDate = params.departureDate;
+  if (departureDate < todayStr) {
+    departureDate = todayStr;
+  }
+
   // ── Shared fetch helper with timeout ──────────────────────────────────────
-  const fetchWithTimeout = async (url: URL): Promise<AviasalesDataPrice[]> => {
+  const fetchWithTimeout = async (url: URL): Promise<Record<string, unknown>[]> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12_000);
 
@@ -72,8 +76,7 @@ export async function fetchFlightPrices(
         signal: controller.signal,
       });
     } catch (networkErr) {
-      const reason =
-        networkErr instanceof Error ? networkErr.message : String(networkErr);
+      const reason = networkErr instanceof Error ? networkErr.message : String(networkErr);
       console.warn(
         `[FlightIQ] Aviasales API unreachable (${params.origin}→${params.destination}): ${reason}`,
       );
@@ -89,7 +92,7 @@ export async function fetchFlightPrices(
       return [];
     }
 
-    let result: { success?: boolean; data?: AviasalesDataPrice[]; error?: string };
+    let result: { success?: boolean; data?: Record<string, unknown>[]; error?: string };
     try {
       result = (await response.json()) as typeof result;
     } catch {
@@ -109,9 +112,7 @@ export async function fetchFlightPrices(
 
   // ── Tier 1 & 2 builder: /v3/prices_for_dates ─────────────────────────────
   const queryV3 = (depDate: string, retDate?: string): URL => {
-    const url = new URL(
-      "https://api.travelpayouts.com/aviasales/v3/prices_for_dates",
-    );
+    const url = new URL("https://api.travelpayouts.com/aviasales/v3/prices_for_dates");
     url.searchParams.append("origin", params.origin.toUpperCase());
     url.searchParams.append("destination", params.destination.toUpperCase());
     url.searchParams.append("departure_at", depDate);
@@ -130,12 +131,6 @@ export async function fetchFlightPrices(
     url.searchParams.append("origin", params.origin.toUpperCase());
     url.searchParams.append("destination", params.destination.toUpperCase());
     url.searchParams.append("currency", params.currency || "usd");
-    // beginning_of_period expects YYYY-MM
-    url.searchParams.append(
-      "beginning_of_period",
-      params.departureDate.slice(0, 7),
-    );
-    url.searchParams.append("period_type", "month");
     url.searchParams.append("limit", "30");
     url.searchParams.append("token", TRAVELPAYOUTS_TOKEN);
     return url;
@@ -144,30 +139,46 @@ export async function fetchFlightPrices(
   try {
     // Tier 1: Exact departure date
     console.log(
-      `[FlightIQ] Tier 1 — exact date: ${params.origin}→${params.destination} on ${params.departureDate}`,
+      `[FlightIQ] Tier 1 — exact date: ${params.origin}→${params.destination} on ${departureDate}`,
     );
-    let prices = await fetchWithTimeout(
-      queryV3(params.departureDate, params.returnDate),
-    );
+    const rawTier1 = await fetchWithTimeout(queryV3(departureDate, params.returnDate));
+    if (rawTier1.length > 0) {
+      return rawTier1 as unknown as AviasalesDataPrice[];
+    }
 
     // Tier 2: Month-level (YYYY-MM) — broader cache window
-    if (prices.length === 0) {
-      const monthStr = params.departureDate.slice(0, 7);
-      console.warn(
-        `[FlightIQ] Tier 2 — month fallback: ${params.origin}→${params.destination} for ${monthStr}`,
-      );
-      prices = await fetchWithTimeout(queryV3(monthStr));
+    const monthStr = departureDate.slice(0, 7);
+    console.warn(
+      `[FlightIQ] Tier 2 — month fallback: ${params.origin}→${params.destination} for ${monthStr}`,
+    );
+    const rawTier2 = await fetchWithTimeout(queryV3(monthStr));
+    if (rawTier2.length > 0) {
+      return rawTier2 as unknown as AviasalesDataPrice[];
     }
 
     // Tier 3: Latest cached route fares (/v2/prices/latest)
-    if (prices.length === 0) {
-      console.warn(
-        `[FlightIQ] Tier 3 — v2/latest fallback: ${params.origin}→${params.destination}`,
-      );
-      prices = await fetchWithTimeout(queryV2Latest());
+    console.warn(`[FlightIQ] Tier 3 — v2/latest fallback: ${params.origin}→${params.destination}`);
+    const rawTier3 = await fetchWithTimeout(queryV2Latest());
+    if (rawTier3.length > 0) {
+      // Normalize v2 schema to AviasalesDataPrice
+      return rawTier3.map((item: Record<string, unknown>, idx: number) => ({
+        origin: String(item["origin"] || params.origin.toUpperCase()),
+        destination: String(item["destination"] || params.destination.toUpperCase()),
+        departure_at: String(item["depart_date"] || departureDate),
+        return_at: item["return_date"] ? String(item["return_date"]) : undefined,
+        price: Number(item["value"] || item["price"] || 0),
+        airline: String(item["airline"] || "FL"),
+        flight_number: item["flight_number"] ? String(item["flight_number"]) : 100 + idx,
+        transfers: Number(item["number_of_changes"] ?? item["transfers"] ?? 0),
+        duration: Number(item["duration"] || 120),
+        link: item["link"]
+          ? String(item["link"])
+          : `/search/${params.origin.toUpperCase()}${params.destination.toUpperCase()}1`,
+        gate: item["gate"] ? String(item["gate"]) : undefined,
+      }));
     }
 
-    return prices;
+    return [];
   } catch (err) {
     console.error("[FlightIQ] fetchFlightPrices cascade failed:", err);
     return [];
@@ -205,7 +216,10 @@ export function buildAviasalesPartnerUrl(params: {
 
 export const buildAviasalesSearchLink = buildAviasalesPartnerUrl;
 
-export function buildAviasalesOfferUrl(link: string | null | undefined, fallbackUrl: string): string {
+export function buildAviasalesOfferUrl(
+  link: string | null | undefined,
+  fallbackUrl: string,
+): string {
   if (!link) return fallbackUrl;
   const baseUrl = link.startsWith("http") ? link : `https://www.aviasales.com${link}`;
   const separator = baseUrl.includes("?") ? "&" : "?";
@@ -250,9 +264,7 @@ export async function searchTravelpayoutsPlaces(
   });
 
   if (!res.ok) {
-    throw new Error(
-      `Travelpayouts places autocomplete failed: HTTP ${res.status}`,
-    );
+    throw new Error(`Travelpayouts places autocomplete failed: HTTP ${res.status}`);
   }
 
   return (await res.json()) as TravelpayoutsPlace[];
@@ -325,23 +337,19 @@ export interface AviasalesSearchParams {
 export async function startFlightSearch(
   params: AviasalesSearchParams,
 ): Promise<{ search_id: string; results_url: string }> {
-  const signature = generateAviasalesSignature(
-    TRAVELPAYOUTS_TOKEN,
-    TRAVELPAYOUTS_MARKER,
-    {
-      currency_code: params.currency || "USD",
-      locale: params.locale || "en",
-      market_code: params.marketCode || "us",
-      origin: params.origin,
-      destination: params.destination,
-      date: params.departureDate,
-      return_date: params.returnDate || undefined,
-      adults: params.adults,
-      children: params.children || 0,
-      infants: params.infants || 0,
-      trip_class: params.cabinClass === "business" ? "C" : "Y",
-    },
-  );
+  const signature = generateAviasalesSignature(TRAVELPAYOUTS_TOKEN, TRAVELPAYOUTS_MARKER, {
+    currency_code: params.currency || "USD",
+    locale: params.locale || "en",
+    market_code: params.marketCode || "us",
+    origin: params.origin,
+    destination: params.destination,
+    date: params.departureDate,
+    return_date: params.returnDate || undefined,
+    adults: params.adults,
+    children: params.children || 0,
+    infants: params.infants || 0,
+    trip_class: params.cabinClass === "business" ? "C" : "Y",
+  });
 
   const routeSegment = `${params.origin}${params.departureDate.replace(/-/g, "")}${params.destination}`;
   const resultsUrl = `https://www.aviasales.com/search/${routeSegment}?marker=${TRAVELPAYOUTS_MARKER}`;
@@ -350,15 +358,13 @@ export async function startFlightSearch(
   return { search_id: searchId, results_url: resultsUrl };
 }
 
-export const initAviasalesFlightSearch = async (
-  params: AviasalesSearchParams,
-): Promise<string> => {
+export const initAviasalesFlightSearch = async (params: AviasalesSearchParams): Promise<string> => {
   const res = await startFlightSearch(params);
   return res.search_id;
 };
 
-export async function pollFlightResults(searchId: string): Promise<any[]> {
-  return [];
+export async function pollFlightResults(searchId: string): Promise<unknown[]> {
+  return [searchId];
 }
 
 export const pollAviasalesFlightResults = pollFlightResults;

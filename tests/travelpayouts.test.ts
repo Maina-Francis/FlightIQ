@@ -8,14 +8,19 @@ import {
   isTravelpayoutsConfigured,
   TRAVELPAYOUTS_TOKEN,
   TRAVELPAYOUTS_MARKER,
-} from "../src/lib/travelpayouts";
+} from "../src/lib/travelpayouts.ts";
 
 describe("Aviasales Data API v3 & Partner Deep Links", () => {
   test("fetchFlightPrices returns HTTP 200 with array of flight fares", async () => {
+    // Dynamically use a future date (35 days ahead) so the query is always in the valid booking window
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 35);
+    const departureDate = futureDate.toISOString().split("T")[0]!;
+
     const results = await fetchFlightPrices({
-      origin: "CPT",
-      destination: "LON",
-      departureDate: "2026-09-23",
+      origin: "LON",
+      destination: "PAR",
+      departureDate,
       currency: "usd",
     });
 
@@ -34,8 +39,8 @@ describe("Aviasales Data API v3 & Partner Deep Links", () => {
       gate: sample.gate,
     });
 
-    assert.equal(sample.origin, "CPT");
-    assert.equal(sample.destination, "LON");
+    assert.equal(sample.origin, "LON");
+    assert.equal(sample.destination, "PAR");
     assert.ok(typeof sample.price === "number" && sample.price > 0);
     assert.ok(sample.airline, "Expected airline code");
   });
@@ -92,11 +97,7 @@ describe("Travelpayouts Aviasales MD5 Signature Generator", () => {
       trip_class: "Y",
     };
 
-    const signature = generateAviasalesSignature(
-      sampleToken,
-      sampleMarker,
-      params,
-    );
+    const signature = generateAviasalesSignature(sampleToken, sampleMarker, params);
 
     const expectedRaw = [
       sampleToken,
@@ -114,10 +115,7 @@ describe("Travelpayouts Aviasales MD5 Signature Generator", () => {
       "Y",
     ].join(":");
 
-    const expectedHash = crypto
-      .createHash("md5")
-      .update(expectedRaw)
-      .digest("hex");
+    const expectedHash = crypto.createHash("md5").update(expectedRaw).digest("hex");
 
     assert.equal(signature, expectedHash);
     assert.match(signature, /^[a-f0-9]{32}$/);
