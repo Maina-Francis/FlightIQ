@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import {
   fetchFlightPrices,
+  searchTravelpayoutsPlaces,
   buildAviasalesPartnerUrl,
   generateAviasalesSignature,
   isTravelpayoutsConfigured,
@@ -44,6 +45,25 @@ describe("Aviasales Data API v3 & Partner Deep Links", () => {
     assert.equal(sample.destination, "PAR");
     assert.ok(typeof sample.price === "number" && sample.price > 0);
     assert.ok(sample.airline, "Expected airline code");
+  });
+
+  test("searchTravelpayoutsPlaces finds Nairobi and Kenya places", async () => {
+    const places = await searchTravelpayoutsPlaces("Nairobi");
+    console.log(
+      "[Test] Nairobi places returned:",
+      places.map((p) => ({ type: p.type, code: p.code, name: p.name })),
+    );
+    const kenyaPlaces = await searchTravelpayoutsPlaces("Kenya");
+    console.log(
+      "[Test] Kenya places returned:",
+      kenyaPlaces.map((p) => ({
+        type: p.type,
+        code: p.code,
+        name: p.name,
+        country_name: p.country_name,
+      })),
+    );
+    assert.ok(places.length > 0);
   });
 
   test("buildAviasalesPartnerUrl constructs valid route segment and marker", () => {

@@ -985,6 +985,40 @@ function SearchPage() {
               </div>
             )}
 
+            {/* Smart Alternate Hub Suggestion Banner (e.g. Wilson -> Jomo Kenyatta) */}
+            {searchParams.origin === "WIL" && (
+              <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      Looking for direct commercial flights? Try Nairobi Jomo Kenyatta (NBO)
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Wilson Airport (WIL) operates bush & safari charter flights. Nonstop
+                      commercial flights (~45 min) to{" "}
+                      {destAirport?.city || searchParams.destination} depart from NBO starting from
+                      ~$45.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to="/search"
+                  search={{
+                    ...searchParams,
+                    origin: "NBO",
+                  }}
+                  className="shrink-0"
+                >
+                  <Button size="sm" className="h-8 text-xs font-semibold gap-1.5 glow-cta">
+                    Switch to NBO
+                  </Button>
+                </Link>
+              </div>
+            )}
+
             {/* Sort Header Tabs */}
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

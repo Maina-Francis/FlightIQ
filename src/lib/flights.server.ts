@@ -110,10 +110,15 @@ async function computePriceDrops(
       .from("flight_price_cache")
       .upsert(upserts, { onConflict: "route_key" })
       .then(({ error }: { error?: { message: string } | null }) => {
-        if (error) console.error("[FlightIQ] Cache upsert failed:", error.message);
+        if (error && !error.message?.includes("fetch failed")) {
+          console.warn("[FlightIQ] Cache upsert notice:", error.message);
+        }
       })
       .catch((err: unknown) => {
-        console.error("[FlightIQ] Cache upsert unhandled rejection:", err);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes("fetch failed")) {
+          console.warn("[FlightIQ] Cache upsert notice:", msg);
+        }
       });
   } catch (err) {
     console.warn("[FlightIQ] Price drop detection failed:", err);

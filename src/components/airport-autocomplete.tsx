@@ -6,7 +6,7 @@ import {
   type AirportSearchResult,
 } from "@/lib/airports.functions";
 import { cn } from "@/lib/utils";
-import { Plane, X, AlertCircle, Loader2 } from "lucide-react";
+import { Plane, Building2, X, AlertCircle, Loader2 } from "lucide-react";
 
 type Props = {
   value: string;
@@ -200,28 +200,44 @@ export function AirportAutocomplete({
               {results.map((airport, i) => (
                 <button
                   type="button"
-                  key={`${airport.iata}-${i}`}
+                  key={`${airport.iata}-${airport.name}-${i}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     selectAirport(airport);
                   }}
                   onMouseEnter={() => setHighlight(i)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                    i === highlight && "bg-accent",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                    i === highlight ? "bg-accent text-accent-foreground" : "hover:bg-accent/60",
                   )}
                 >
-                  <Plane className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="w-10 font-bold text-primary">{airport.iata}</span>
-                  <span className="flex-1">
-                    <span className="font-medium">{airport.city}</span>
-                    {airport.name && airport.name !== airport.city && (
-                      <span className="ml-1.5 text-muted-foreground">{airport.name}</span>
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
+                    {airport.type === "city" ? (
+                      <Building2 className="h-4 w-4" />
+                    ) : (
+                      <Plane className="h-4 w-4 text-primary" />
                     )}
-                    {airport.country && (
-                      <span className="ml-1.5 text-muted-foreground">· {airport.country}</span>
-                    )}
+                  </div>
+                  <span className="w-10 font-mono font-bold text-primary shrink-0">
+                    {airport.iata}
                   </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-semibold text-foreground">
+                        {airport.type === "airport" && airport.name ? airport.name : airport.city}
+                      </span>
+                      {airport.type === "city" && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
+                          All Airports
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {airport.type === "airport" && airport.name !== airport.city
+                        ? `${airport.city}, ${airport.country}`
+                        : airport.country}
+                    </div>
+                  </div>
                 </button>
               ))}
               {loading && (

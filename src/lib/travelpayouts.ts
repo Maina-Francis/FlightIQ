@@ -255,11 +255,12 @@ export async function searchTravelpayoutsPlaces(
 
   const url = `https://autocomplete.travelpayouts.com/places2?term=${encodeURIComponent(
     term,
-  )}&locale=${encodeURIComponent(locale)}&types[]=airport&types[]=city`;
+  )}&locale=${encodeURIComponent(locale)}&types[]=airport&types[]=city&types[]=country`;
 
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
+      "User-Agent": "FlightIQ/1.0",
     },
   });
 
