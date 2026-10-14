@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { FlightCard } from "@/components/flight-card";
 import { AlertModal } from "@/components/alert-modal";
+import { FarePredictionCard } from "@/components/FarePredictionCard";
+import { DateRangeBar } from "@/components/DateRangeBar";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,12 +39,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
@@ -313,25 +310,9 @@ function SearchPage() {
       return [1, 2, 3, 4, 5, "...", totalPages];
     }
     if (safeCurrentPage >= totalPages - 3) {
-      return [
-        1,
-        "...",
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages,
-      ];
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
     }
-    return [
-      1,
-      "...",
-      safeCurrentPage - 1,
-      safeCurrentPage,
-      safeCurrentPage + 1,
-      "...",
-      totalPages,
-    ];
+    return [1, "...", safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, "...", totalPages];
   }, [safeCurrentPage, totalPages]);
 
   function handleResetFilters() {
@@ -786,7 +767,9 @@ function SearchPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setSelectedTimeOfDay(selectedTimeOfDay === "afternoon" ? "all" : "afternoon")
+                          setSelectedTimeOfDay(
+                            selectedTimeOfDay === "afternoon" ? "all" : "afternoon",
+                          )
                         }
                         className={cn(
                           "flex items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
@@ -916,7 +899,8 @@ function SearchPage() {
                     onClick={() => setMobileFiltersOpen(false)}
                     className="w-full glow-cta"
                   >
-                    Show {filteredOffers.length} {filteredOffers.length === 1 ? "flight" : "flights"}
+                    Show {filteredOffers.length}{" "}
+                    {filteredOffers.length === 1 ? "flight" : "flights"}
                   </Button>
                 </div>
               </div>
@@ -925,6 +909,30 @@ function SearchPage() {
 
           {/* Results Column */}
           <div ref={resultsTopRef} className="scroll-mt-24">
+            {/* AirTrackBot-style Flexible Date Selector */}
+            <div className="mb-6">
+              <DateRangeBar
+                searchParams={searchParams}
+                lowestPrice={minOfferPrice}
+                currency={currency}
+              />
+            </div>
+
+            {/* AirTrackBot-style Fare Prediction Guidance & Score */}
+            {!isLoading && offers.length > 0 && (
+              <div className="mb-6">
+                <FarePredictionCard
+                  offers={offers}
+                  searchParams={searchParams}
+                  currency={currency}
+                  onTrackRoute={() => {
+                    setAlertOffer(sortedOffers[0] ?? null);
+                    setAlertOpen(true);
+                  }}
+                />
+              </div>
+            )}
+
             {/* Sort Header Tabs */}
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -932,17 +940,17 @@ function SearchPage() {
                   {isLoading
                     ? "Searching live fares…"
                     : totalOffersCount === 0
-                    ? "0 flight deals"
-                    : filteredOffers.length !== offers.length
-                    ? `${filteredOffers.length} of ${offers.length} flight deals (Page ${safeCurrentPage} of ${totalPages})`
-                    : `${totalOffersCount} ${totalOffersCount === 1 ? "flight deal" : "flight deals"} available (Page ${safeCurrentPage} of ${totalPages})`}
+                      ? "0 flight deals"
+                      : filteredOffers.length !== offers.length
+                        ? `${filteredOffers.length} of ${offers.length} flight deals (Page ${safeCurrentPage} of ${totalPages})`
+                        : `${totalOffersCount} ${totalOffersCount === 1 ? "flight deal" : "flight deals"} available (Page ${safeCurrentPage} of ${totalPages})`}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isLoading
                     ? "Checking airlines and prices in real time."
                     : totalOffersCount > 0
-                    ? `Showing ${startIndex + 1}–${endIndex} of ${totalOffersCount} fares. Taxes and fees included.`
-                    : "All fares include taxes and airline booking fees. Real-time partner pricing."}
+                      ? `Showing ${startIndex + 1}–${endIndex} of ${totalOffersCount} fares. Taxes and fees included.`
+                      : "All fares include taxes and airline booking fees. Real-time partner pricing."}
                 </p>
               </div>
 
@@ -1006,9 +1014,7 @@ function SearchPage() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                   <AlertCircle className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-base font-bold text-foreground">
-                  Couldn't fetch flights
-                </h3>
+                <h3 className="mt-4 text-base font-bold text-foreground">Couldn't fetch flights</h3>
                 <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
                   {error instanceof Error
                     ? error.message
@@ -1030,13 +1036,12 @@ function SearchPage() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Plane className="h-6 w-6 rotate-45" />
                 </div>
-                <h3 className="mt-4 text-base font-bold text-foreground">
-                  No live flights found
-                </h3>
+                <h3 className="mt-4 text-base font-bold text-foreground">No live flights found</h3>
                 <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
                   No live flights were found for {originAirport?.name ?? searchParams.origin} (
                   {searchParams.origin}) to {destAirport?.name ?? searchParams.destination} (
-                  {searchParams.destination}) on {searchParams.departureDate}. Try searching with different dates or nearby airports.
+                  {searchParams.destination}) on {searchParams.departureDate}. Try searching with
+                  different dates or nearby airports.
                 </p>
                 <Link to="/">
                   <Button variant="outline" size="sm" className="mt-5 gap-2">
@@ -1055,15 +1060,10 @@ function SearchPage() {
                   No flights match your filters
                 </h3>
                 <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                  Try broadening your stops, departure time, or price range to
-                  view available airline deals.
+                  Try broadening your stops, departure time, or price range to view available
+                  airline deals.
                 </p>
-                <Button
-                  onClick={handleResetFilters}
-                  variant="outline"
-                  size="sm"
-                  className="mt-5"
-                >
+                <Button onClick={handleResetFilters} variant="outline" size="sm" className="mt-5">
                   Reset all filters
                 </Button>
               </div>
@@ -1088,8 +1088,12 @@ function SearchPage() {
                     {/* Left: Range indicator & Per page selector */}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
-                        Showing <span className="font-semibold text-foreground">{startIndex + 1}–{endIndex}</span> of{" "}
-                        <span className="font-semibold text-foreground">{totalOffersCount}</span> flights
+                        Showing{" "}
+                        <span className="font-semibold text-foreground">
+                          {startIndex + 1}–{endIndex}
+                        </span>{" "}
+                        of <span className="font-semibold text-foreground">{totalOffersCount}</span>{" "}
+                        flights
                       </span>
                       <span className="hidden sm:inline">·</span>
                       <div className="hidden items-center gap-1.5 sm:flex">

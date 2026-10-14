@@ -167,8 +167,8 @@ function Index() {
 
           <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
             Search flights, set price drop alerts, and book directly with the airline. No hidden
-            fees, no middleman — just the best fares in your local currency, delivered to your
-            inbox or Telegram.
+            fees, no middleman — just the best fares in your local currency, delivered to your inbox
+            or Telegram.
           </p>
         </div>
 
@@ -253,14 +253,17 @@ function Index() {
                 </h2>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                   Airline fares fluctuate due to demand, seasonality, seat availability, and
-                  competitor pricing. Instead of refreshing websites daily or hoping for a deal,
-                  set a price alert and let our scanner do the work. The moment fares drop, you'll
-                  know — with a direct booking link ready to go.
+                  competitor pricing. Instead of refreshing websites daily or hoping for a deal, set
+                  a price alert and let our scanner do the work. The moment fares drop, you'll know
+                  — with a direct booking link ready to go.
                 </p>
                 <div className="mt-6 space-y-3">
                   {[
                     { icon: Clock, text: "Monitors your route 24/7 — no manual checking" },
-                    { icon: Bell, text: "Instant alerts via email or Telegram the moment prices drop" },
+                    {
+                      icon: Bell,
+                      text: "Instant alerts via email or Telegram the moment prices drop",
+                    },
                     { icon: BarChart3, text: "Rate-limited to one alert per 24 hours — no spam" },
                   ].map((item) => (
                     <div key={item.text} className="flex items-center gap-3">
@@ -301,7 +304,9 @@ function Index() {
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black text-success">KES 38,500</span>
-                        <span className="text-xs text-muted-foreground line-through">KES 52,000</span>
+                        <span className="text-xs text-muted-foreground line-through">
+                          KES 52,000
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -391,8 +396,7 @@ function Index() {
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                   Use our Telegram bot to search flights, set price alerts, and get instant
-                  notifications — all from a simple chat. No app to download, no account to
-                  create.
+                  notifications — all from a simple chat. No app to download, no account to create.
                 </p>
                 <ul className="mt-5 space-y-2">
                   {[

@@ -46,8 +46,7 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
       window.localStorage.getItem("flytiq_country") ??
       window.localStorage.getItem("flytiq_country");
     const city =
-      window.localStorage.getItem("flytiq_city") ??
-      window.localStorage.getItem("flytiq_city");
+      window.localStorage.getItem("flytiq_city") ?? window.localStorage.getItem("flytiq_city");
     if (country) set({ detectedCountry: country });
     if (city) set({ detectedCity: city });
   },
@@ -95,8 +94,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   hydrate: () => {
     if (typeof window === "undefined") return;
     const stored =
-      window.localStorage.getItem(THEME_KEY) ??
-      window.localStorage.getItem("flytiq_theme");
+      window.localStorage.getItem(THEME_KEY) ?? window.localStorage.getItem("flytiq_theme");
     const theme = stored === "light" ? "light" : "dark";
     applyTheme(theme);
     set({ theme });
