@@ -137,13 +137,7 @@ function AirlineLogo({
   );
 }
 
-export function FlightCard({
-  offer,
-  searchParams,
-  currency,
-  onTrackPrice,
-  onBookDeal,
-}: Props) {
+export function FlightCard({ offer, searchParams, currency, onTrackPrice, onBookDeal }: Props) {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
   function handleSelectDeal() {
@@ -164,11 +158,7 @@ export function FlightCard({
   const dayOffset = getArrivalDayOffset(offer.departTime, offer.durationMinutes);
 
   const displayPrice = convertCurrencyAmount(offer.price, offer.currency, currency);
-  const displayBaselinePrice = convertCurrencyAmount(
-    offer.baselinePrice,
-    offer.currency,
-    currency,
-  );
+  const displayBaselinePrice = convertCurrencyAmount(offer.baselinePrice, offer.currency, currency);
   const isConverted = offer.currency !== currency;
 
   return (
@@ -186,7 +176,9 @@ export function FlightCard({
               {offer.airline}
             </h3>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-              <span className={cn("font-medium", isDirect ? "text-success" : "text-muted-foreground")}>
+              <span
+                className={cn("font-medium", isDirect ? "text-success" : "text-muted-foreground")}
+              >
                 {stopoverText}
               </span>
               <span>•</span>
@@ -199,8 +191,7 @@ export function FlightCard({
         <div className="flex shrink-0 items-center gap-2">
           {offer.dropPercent > 0 && (
             <Badge className="gap-1 bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success border-success/30 hover:bg-success/20">
-              <TrendingDown className="h-3 w-3" />
-              -{offer.dropPercent}%
+              <TrendingDown className="h-3 w-3" />-{offer.dropPercent}%
             </Badge>
           )}
           {offer.bestLocalFare && (
@@ -264,20 +255,21 @@ export function FlightCard({
                 </span>
 
                 {/* Estimated layover duration — derived from total duration when no segment data */}
-                {offer.durationMinutes > 0 && (() => {
-                  // Rough estimate: subtract ~1h per leg as flight time,
-                  // remainder split across stops as layover time.
-                  // Shown only when stops == 1 for accuracy.
-                  if (offer.stops !== 1) return null;
-                  const rawLayover = offer.durationMinutes;
-                  const overnight = rawLayover >= 480;
-                  return overnight ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-300 border border-amber-500/20">
-                      <Moon className="h-2.5 w-2.5" />
-                      Overnight possible
-                    </span>
-                  ) : null;
-                })()}
+                {offer.durationMinutes > 0 &&
+                  (() => {
+                    // Rough estimate: subtract ~1h per leg as flight time,
+                    // remainder split across stops as layover time.
+                    // Shown only when stops == 1 for accuracy.
+                    if (offer.stops !== 1) return null;
+                    const rawLayover = offer.durationMinutes;
+                    const overnight = rawLayover >= 480;
+                    return overnight ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-300 border border-amber-500/20">
+                        <Moon className="h-2.5 w-2.5" />
+                        Overnight possible
+                      </span>
+                    ) : null;
+                  })()}
               </>
             )}
           </div>

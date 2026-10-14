@@ -131,6 +131,19 @@ export function Navbar() {
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
+            {/* Telegram Bot Link (AirTrackBot style) */}
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden gap-1.5 md:inline-flex text-muted-foreground hover:text-foreground"
+            >
+              <a href="https://t.me/FlightIQBot" target="_blank" rel="noopener noreferrer">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Telegram Bot</span>
+              </a>
+            </Button>
+
             {/* My Tracked Deals */}
             <Button asChild variant="outline" size="sm" className="hidden gap-1.5 sm:inline-flex">
               <Link to="/deals">

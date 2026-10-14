@@ -8,7 +8,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Clock, Plane, ShieldCheck, Check, Sparkles, Calendar, Moon, ArrowRight } from "lucide-react";
+import {
+  ExternalLink,
+  Clock,
+  Plane,
+  ShieldCheck,
+  Check,
+  Sparkles,
+  Calendar,
+  Moon,
+  ArrowRight,
+} from "lucide-react";
 import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import {
   formatFlightDuration,
@@ -232,20 +242,37 @@ export function BookingProviderModal({
             if (!rawSegs || rawSegs.length < 2) return null;
 
             // Map to FlightSegment — handle both Duffel and generic formats
-            const segments: FlightSegment[] = rawSegs
-              .map((s: any) => ({
-                departureIata:
-                  s.origin?.iata_code ?? s.departure_iata ?? s.departureIata ?? "",
-                arrivalIata:
-                  s.destination?.iata_code ?? s.arrival_iata ?? s.arrivalIata ?? "",
-                departureTime:
-                  s.departing_at ?? s.departure_at ?? s.departureTime ?? "",
-                arrivalTime:
-                  s.arriving_at ?? s.arrival_at ?? s.arrivalTime ?? "",
+            const segments: FlightSegment[] = (rawSegs as Record<string, unknown>[])
+              .map((s) => ({
+                departureIata: String(
+                  (s["origin"] as Record<string, unknown>)?.["iata_code"] ??
+                    s["departure_iata"] ??
+                    s["departureIata"] ??
+                    "",
+                ),
+                arrivalIata: String(
+                  (s["destination"] as Record<string, unknown>)?.["iata_code"] ??
+                    s["arrival_iata"] ??
+                    s["arrivalIata"] ??
+                    "",
+                ),
+                departureTime: String(
+                  s["departing_at"] ?? s["departure_at"] ?? s["departureTime"] ?? "",
+                ),
+                arrivalTime: String(s["arriving_at"] ?? s["arrival_at"] ?? s["arrivalTime"] ?? ""),
                 durationMinutes:
-                  s.duration ?? s.durationMinutes ?? undefined,
-                carrierCode:
-                  s.operating_carrier?.iata_code ?? s.airline ?? s.carrierCode ?? undefined,
+                  typeof s["duration"] === "number"
+                    ? s["duration"]
+                    : typeof s["durationMinutes"] === "number"
+                      ? s["durationMinutes"]
+                      : undefined,
+                carrierCode: (s["operating_carrier"] as Record<string, unknown>)?.["iata_code"]
+                  ? String((s["operating_carrier"] as Record<string, unknown>)?.["iata_code"])
+                  : s["airline"]
+                    ? String(s["airline"])
+                    : s["carrierCode"]
+                      ? String(s["carrierCode"])
+                      : undefined,
               }))
               .filter((s) => s.departureIata && s.arrivalIata);
 
@@ -338,10 +365,8 @@ export function BookingProviderModal({
                               )}
                             >
                               {layover.isOvernight ? "Overnight layover" : "Layover"} in{" "}
-                              <span className="font-mono font-bold">
-                                {layover.airportCode}
-                              </span>{" "}
-                              — {layover.formattedDuration}
+                              <span className="font-mono font-bold">{layover.airportCode}</span> —{" "}
+                              {layover.formattedDuration}
                             </span>
                           </div>
                         )}

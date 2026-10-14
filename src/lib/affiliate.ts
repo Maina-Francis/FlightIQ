@@ -61,7 +61,8 @@ export function buildSkyscannerDeepLink(params: DeepLinkParams): string {
 
   // Map departure hour to Skyscanner time window
   if (departureTime) {
-    const timeStr = (departureTime.includes("T") ? departureTime.split("T")[1] : departureTime) || "";
+    const timeStr =
+      (departureTime.includes("T") ? departureTime.split("T")[1] : departureTime) || "";
     const hour = parseInt(timeStr.split(":")[0] ?? "0", 10);
 
     if (!isNaN(hour)) {
