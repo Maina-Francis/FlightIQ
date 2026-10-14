@@ -172,9 +172,18 @@ export function FlightCard({ offer, searchParams, currency, onTrackPrice, onBook
             logo={offer.airlineLogo ?? null}
           />
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">
-              {offer.airline}
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">
+                {offer.airline}
+              </h3>
+              {offer.airlineCode &&
+                offer.airlineCode !== offer.airline &&
+                offer.airlineCode !== "??" && (
+                  <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-mono font-bold text-muted-foreground">
+                    {offer.airlineCode}
+                  </span>
+                )}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
               <span
                 className={cn("font-medium", isDirect ? "text-success" : "text-muted-foreground")}

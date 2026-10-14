@@ -1,5 +1,6 @@
 import { createAPIFileRoute } from "@tanstack/react-start/api";
 import { buildSkyscannerDeepLink, getAirlineWebsite } from "@/lib/affiliate";
+import { getAirlineName } from "@/lib/airlines";
 import {
   buildAviasalesOfferUrl,
   buildAviasalesPartnerUrl,
@@ -102,7 +103,7 @@ export const APIRoute = createAPIFileRoute("/api/search")({
           },
           {
             id: "airline-direct",
-            name: `${carrierCode} Airline Direct`,
+            name: `${getAirlineName(carrierCode)} Direct`,
             price: item.price,
             currency,
             bookingUrl: getAirlineWebsite(carrierCode),

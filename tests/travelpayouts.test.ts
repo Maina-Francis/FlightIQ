@@ -9,6 +9,7 @@ import {
   TRAVELPAYOUTS_TOKEN,
   TRAVELPAYOUTS_MARKER,
 } from "../src/lib/travelpayouts.ts";
+import { getAirlineName, getAirlineLogoUrl, loadAirlinesDatabase } from "../src/lib/airlines.ts";
 
 describe("Aviasales Data API v3 & Partner Deep Links", () => {
   test("fetchFlightPrices returns HTTP 200 with array of flight fares", async () => {
@@ -119,5 +120,30 @@ describe("Travelpayouts Aviasales MD5 Signature Generator", () => {
 
     assert.equal(signature, expectedHash);
     assert.match(signature, /^[a-f0-9]{32}$/);
+  });
+});
+
+describe("Airline Registry & IATA Code Resolver", () => {
+  test("resolves 2-letter IATA carrier codes to full airline names", () => {
+    assert.equal(getAirlineName("RJ"), "Royal Jordanian");
+    assert.equal(getAirlineName("GF"), "Gulf Air");
+    assert.equal(getAirlineName("NO"), "Neos");
+    assert.equal(getAirlineName("SV"), "Saudia");
+    assert.equal(getAirlineName("KQ"), "Kenya Airways");
+    assert.equal(getAirlineName("EK"), "Emirates");
+    assert.equal(getAirlineName("BA"), "British Airways");
+  });
+
+  test("generates Aviasales CDN logo URLs from carrier code", () => {
+    assert.equal(getAirlineLogoUrl("RJ"), "https://pics.avs.io/al_square/64/64/RJ.png");
+    assert.equal(getAirlineLogoUrl("SV"), "https://pics.avs.io/al_square/64/64/SV.png");
+    assert.equal(getAirlineLogoUrl(null), null);
+    assert.equal(getAirlineLogoUrl("??"), null);
+  });
+
+  test("hydrates airlines database without throwing", async () => {
+    await assert.doesNotReject(async () => {
+      await loadAirlinesDatabase();
+    });
   });
 });

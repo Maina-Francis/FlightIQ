@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getAirlineName, getAirlineLogoUrl, loadAirlinesDatabase } from "./airlines";
 import { buildSkyscannerDeepLink } from "./affiliate";
 import {
   formatIsoTime,
@@ -146,12 +147,13 @@ export async function searchLiveFlights(params: SearchLiveFlightsParams): Promis
     adults: params.adults,
   });
 
+  // Ensure airlines database is hydrating in background
+  void loadAirlinesDatabase();
+
   const normalized: FlightOffer[] = dataPrices.map((item, idx) => {
-    const carrierCode = item.airline || "??";
-    const carrierLogo =
-      carrierCode !== "??"
-        ? `https://pics.avs.io/al_square/64/64/${carrierCode.toUpperCase()}.png`
-        : null;
+    const carrierCode = (item.airline || "??").toUpperCase();
+    const airlineName = getAirlineName(carrierCode);
+    const carrierLogo = carrierCode !== "??" ? getAirlineLogoUrl(carrierCode) : null;
 
     const departTime = item.departure_at ? formatIsoTime(item.departure_at) : "--:--";
     const durationMinutes = item.duration || 0;
@@ -194,7 +196,7 @@ export async function searchLiveFlights(params: SearchLiveFlightsParams): Promis
 
     return {
       id: `avs-${carrierCode}-${item.flight_number || idx}`,
-      airline: carrierCode,
+      airline: airlineName,
       airlineCode: carrierCode,
       airlineLogo: carrierLogo,
       price: item.price,

@@ -18,6 +18,7 @@ import { useCurrencyStore, useThemeStore } from "@/lib/store";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
 import { findAirport, registerAirport } from "@/lib/airports";
 import { getAirportByIataFn } from "@/lib/airports.functions";
+import { getAirlineName } from "@/lib/airlines";
 import { convertCurrencyAmount, formatCurrencyAmount } from "@/lib/currency";
 import {
   ArrowLeft,
@@ -198,18 +199,21 @@ function SearchPage() {
     setPriceRange([minOfferPrice, maxOfferPrice]);
   }, [minOfferPrice, maxOfferPrice]);
 
-  // Airlines list with count
+  // Airlines list with count and full passenger-friendly airline name
   const airlinesWithCounts = useMemo(() => {
     const map = new Map<string, { name: string; count: number }>();
     offers.forEach((o) => {
-      const current = map.get(o.airlineCode);
+      const code = (o.airlineCode || o.airline || "").toUpperCase();
+      if (!code || code === "??") return;
+      const airlineName = o.airline && o.airline !== code ? o.airline : getAirlineName(code);
+      const current = map.get(code);
       if (current) {
         current.count += 1;
       } else {
-        map.set(o.airlineCode, { name: o.airline, count: 1 });
+        map.set(code, { name: airlineName, count: 1 });
       }
     });
-    return Array.from(map.entries());
+    return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
   }, [offers]);
 
   // Filter logic
@@ -228,9 +232,12 @@ function SearchPage() {
         if (selectedTimeOfDay === "night" && (hour < 0 || hour >= 6)) return false;
       }
 
-      // Filter by Airline
-      if (selectedAirlines.size > 0 && !selectedAirlines.has(offer.airlineCode)) {
-        return false;
+      // Filter by Airline (uppercase normalized matching)
+      if (selectedAirlines.size > 0) {
+        const code = (offer.airlineCode || offer.airline || "").toUpperCase();
+        if (!selectedAirlines.has(code)) {
+          return false;
+        }
       }
 
       // Filter by Price
@@ -322,11 +329,16 @@ function SearchPage() {
     setPriceRange([minOfferPrice, maxOfferPrice]);
   }
 
-  function toggleAirline(code: string) {
+  function toggleAirline(code: string, explicitChecked?: boolean) {
+    const upper = code.toUpperCase();
     setSelectedAirlines((prev) => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
+      const shouldCheck = explicitChecked !== undefined ? explicitChecked : !next.has(upper);
+      if (shouldCheck) {
+        next.add(upper);
+      } else {
+        next.delete(upper);
+      }
       return next;
     });
   }
@@ -640,25 +652,45 @@ function SearchPage() {
                     )}
                   </div>
 
-                  <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                    {airlinesWithCounts.map(([code, { name, count }]) => (
-                      <label
-                        key={code}
-                        className="flex cursor-pointer items-center justify-between rounded-lg p-1.5 transition-colors hover:bg-accent/50 text-xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Checkbox
-                            checked={selectedAirlines.has(code)}
-                            onCheckedChange={() => toggleAirline(code)}
-                          />
-                          <span className="font-semibold text-foreground">{code}</span>
-                          <span className="text-muted-foreground line-clamp-1">{name}</span>
+                  <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
+                    {airlinesWithCounts.map(([code, { name, count }]) => {
+                      const isChecked = selectedAirlines.has(code);
+                      return (
+                        <div
+                          key={code}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleAirline(code)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleAirline(code);
+                            }
+                          }}
+                          className={cn(
+                            "flex cursor-pointer items-center justify-between rounded-lg p-2 transition-colors text-xs select-none",
+                            isChecked
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "hover:bg-accent/50 text-foreground",
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => toggleAirline(code, checked === true)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="font-bold shrink-0 text-foreground">{code}</span>
+                            <span className="text-muted-foreground truncate" title={name}>
+                              {name}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+                            ({count})
+                          </span>
                         </div>
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          ({count})
-                        </span>
-                      </label>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -872,25 +904,45 @@ function SearchPage() {
                         </button>
                       )}
                     </div>
-                    <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                      {airlinesWithCounts.map(([code, { name, count }]) => (
-                        <label
-                          key={code}
-                          className="flex cursor-pointer items-center justify-between rounded-lg p-1.5 transition-colors hover:bg-accent/50 text-xs"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Checkbox
-                              checked={selectedAirlines.has(code)}
-                              onCheckedChange={() => toggleAirline(code)}
-                            />
-                            <span className="font-semibold text-foreground">{code}</span>
-                            <span className="text-muted-foreground line-clamp-1">{name}</span>
+                    <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                      {airlinesWithCounts.map(([code, { name, count }]) => {
+                        const isChecked = selectedAirlines.has(code);
+                        return (
+                          <div
+                            key={code}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => toggleAirline(code)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleAirline(code);
+                              }
+                            }}
+                            className={cn(
+                              "flex cursor-pointer items-center justify-between rounded-lg p-2 transition-colors text-xs select-none",
+                              isChecked
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "hover:bg-accent/50 text-foreground",
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => toggleAirline(code, checked === true)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <span className="font-bold shrink-0 text-foreground">{code}</span>
+                              <span className="text-muted-foreground truncate" title={name}>
+                                {name}
+                              </span>
+                            </div>
+                            <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+                              ({count})
+                            </span>
                           </div>
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            ({count})
-                          </span>
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
